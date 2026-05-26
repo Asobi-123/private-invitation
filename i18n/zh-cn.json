@@ -389,6 +389,7 @@
   "invitation.dismiss": "拒绝",
   "invitation.dismissFinal": "这次不了",
   "invitation.noPool": "邀约角色里没有可用角色",
+  "invitation.notReady": "酒馆还在加载，请稍候再点～",
   "invitation.defaultLine": "{char} 的某句话又浮了上来。",
   "invitation.defaultRetentionLine": "{char} 还不想放你走。",
   "invitation.aiBatchInstruction": "请为 {char} 生成 {count} 条主页展示用的角色文案/回忆台词。",

@@ -25,7 +25,8 @@ Panel stability and usability improvements. Version number for the first public 
 ### Fixed
 
 - Clicking on console blank areas no longer accidentally closes the modal.
-- Homepage auto-invitation now waits for `APP_READY` or the character list to be available and for the homepage to be stable for ~1.5s before firing.
+- Homepage auto-invitation no longer fires before SillyTavern has finished restoring the user's last chat state. The earlier "ready" check accepted "character list loaded" as good enough, which is satisfied very early during slow VPS boot and let the invitation pop while the previous chat was still being restored. The gate now requires `APP_READY` plus a post-`APP_READY` grace window before counting homepage stability time.
+- Accepting an invitation now re-checks the ready state at click time. Previously, accepting while SillyTavern was still loading could call `selectCharacterById` mid-restore and overwrite the user's existing chat with an empty new one. When not ready, the invitation stays open and a toast asks the user to retry.
 - Cover artwork is preloaded before the invitation pops out, with a timeout fallback; preload completion re-checks that the user is still on the homepage, reducing premature pops on slow VPS that prevented entry.
 
 ## [0.1.0] - 2026-05-26

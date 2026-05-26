@@ -389,6 +389,7 @@
   "invitation.dismiss": "Dismiss",
   "invitation.dismissFinal": "Not this time",
   "invitation.noPool": "No available invitation characters",
+  "invitation.notReady": "SillyTavern is still loading, please try again in a moment.",
   "invitation.defaultLine": "A line from {char} drifts back again.",
   "invitation.defaultRetentionLine": "{char} is not ready to let you leave.",
   "invitation.aiBatchInstruction": "Generate {count} homepage character copy / memory lines for {char}.",

@@ -50,6 +50,7 @@ const CUSTOM_TEMPLATE_PREFIX = 'custom:';
 const maxContextChars = 16000;
 const homepageStableDelayMs = 1500;
 const homepageRetryDelayMs = 700;
+const homepageAppReadyGraceMs = 2500;
 const coverPreloadTimeoutMs = 2500;
 
 function isCustomTemplateKey(value) {
@@ -413,6 +414,7 @@ const state = {
     homepageInvitePending: false,
     homepageInviteLoading: false,
     appReady: false,
+    appReadyAt: 0,
     chatFileCache: new Map(),
     invitationFromConsoleTest: false,
     shownThisRound: new Set(),
@@ -2179,6 +2181,10 @@ async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()
 }
 
 async function acceptInvitation(characterInfo) {
+    if (!isSillyTavernReadyForChatSwitch()) {
+        notify('warning', t('invitation.notReady'));
+        return;
+    }
     state.invitationFromConsoleTest = false;
     state.shownThisRound.clear();
     state.continueCount = 0;
@@ -2269,6 +2275,14 @@ function scheduleHomepageInvitationRetry() {
 }
 
 function isHomepageReadyForInvitation() {
+    if (!state.appReady) {
+        state.homepageStableSince = 0;
+        return false;
+    }
+    if (state.appReadyAt && Date.now() - state.appReadyAt < homepageAppReadyGraceMs) {
+        state.homepageStableSince = 0;
+        return false;
+    }
     const homepage = isHomepage();
     if (!homepage) {
         state.homepageStableSince = 0;
@@ -2280,9 +2294,17 @@ function isHomepageReadyForInvitation() {
         return false;
     }
 
-    const hasCharacters = getAvailableCharacters().length > 0;
-    const appReadyEnough = state.appReady || hasCharacters;
-    return appReadyEnough && Date.now() - state.homepageStableSince >= homepageStableDelayMs;
+    return Date.now() - state.homepageStableSince >= homepageStableDelayMs;
+}
+
+function isSillyTavernReadyForChatSwitch() {
+    if (!state.appReady) {
+        return false;
+    }
+    if (state.appReadyAt && Date.now() - state.appReadyAt < homepageAppReadyGraceMs) {
+        return false;
+    }
+    return true;
 }
 
 function maybeShowHomepageInvitation(force = false) {
@@ -5196,6 +5218,7 @@ async function init() {
 function registerEventHandlers() {
     eventSource?.on?.(event_types.APP_READY, () => {
         state.appReady = true;
+        state.appReadyAt = Date.now();
         refreshUi();
         handleHomepageStateChanged();
     });
