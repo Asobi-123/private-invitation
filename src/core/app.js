@@ -38,8 +38,19 @@ const homepageTriggerModes = [
     'manual',
 ];
 
+const panelThemeKeys = [
+    'midnight',
+    'parchment',
+    'ember',
+    'jade',
+    'st',
+];
+
 const CUSTOM_TEMPLATE_PREFIX = 'custom:';
 const maxContextChars = 16000;
+const homepageStableDelayMs = 1500;
+const homepageRetryDelayMs = 700;
+const coverPreloadTimeoutMs = 2500;
 
 function isCustomTemplateKey(value) {
     return typeof value === 'string' && value.startsWith(CUSTOM_TEMPLATE_PREFIX);
@@ -235,6 +246,7 @@ const defaultSettings = {
     independentApiConfig: { apiUrl: '', apiKey: '', model: '' },
     apiProfiles: [],
     currentApiProfileId: '',
+    panelTheme: 'midnight',
     debug: false,
 };
 
@@ -396,6 +408,11 @@ const state = {
     sessionInvitationShown: false,
     wasHomepage: false,
     homepageCheckTimer: null,
+    homepageRetryTimer: null,
+    homepageStableSince: 0,
+    homepageInvitePending: false,
+    homepageInviteLoading: false,
+    appReady: false,
     chatFileCache: new Map(),
     invitationFromConsoleTest: false,
     shownThisRound: new Set(),
@@ -776,6 +793,7 @@ function ensureSettings() {
     if (settings.currentApiProfileId && !settings.apiProfiles.some((p) => p.id === settings.currentApiProfileId)) {
         settings.currentApiProfileId = '';
     }
+    settings.panelTheme = panelThemeKeys.includes(settings.panelTheme) ? settings.panelTheme : defaultSettings.panelTheme;
     settings.enabled = Boolean(settings.enabled);
     settings.showMenuEntry = Boolean(settings.showMenuEntry);
     settings.autoOpenOnHome = Boolean(settings.autoOpenOnHome);
@@ -1481,9 +1499,46 @@ async function getWorldEntriesCached(worldName) {
     return entries;
 }
 
+function entryMatchesSearch(entry, search) {
+    if (!search) {
+        return true;
+    }
+    const haystack = [
+        entry.uid,
+        entry.comment,
+        entry.keys,
+        entry.content,
+    ].join('\n').toLowerCase();
+    return haystack.includes(search);
+}
+
+function updateWorldEntrySelectionMeta(detailsEl, worldName, characterInfo, entries) {
+    const stored = getCharacterWorldEntries(characterInfo, worldName);
+    const total = entries.length;
+    const selectedCount = stored === 'all' ? total : (Array.isArray(stored) ? stored.length : 0);
+    const allInput = detailsEl?.querySelector?.('input[data-pi-world-all]');
+    const meta = detailsEl?.querySelector?.('.pi-world-book-meta');
+    const headerCount = detailsEl?.querySelector?.('.pi-world-entries-header .pi-muted');
+
+    if (allInput) {
+        allInput.checked = total > 0 && selectedCount === total;
+    }
+    if (meta) {
+        meta.textContent = selectedCount === total
+            ? t('console.context.worldEntriesAllShort')
+            : t('console.context.worldEntriesCountShort', { count: selectedCount });
+    }
+    if (headerCount) {
+        headerCount.textContent = t('console.context.worldEntriesCount', { selected: selectedCount, total });
+    }
+}
+
 async function renderWorldEntryList(detailsEl, worldName, characterInfo) {
     const list = detailsEl.querySelector('.pi-world-entries-list');
     if (!list) return;
+    const activeSearch = list.querySelector?.('[data-pi-world-entry-search]');
+    const shouldRefocus = document.activeElement === activeSearch;
+    const previousSearch = detailsEl.dataset.piWorldEntrySearch || activeSearch?.value || '';
     list.innerHTML = `<div class="pi-muted">${t('console.context.worldEntriesLoading')}</div>`;
     try {
         const entries = await getWorldEntriesCached(worldName);
@@ -1494,6 +1549,8 @@ async function renderWorldEntryList(detailsEl, worldName, characterInfo) {
             list.innerHTML = `<div class="pi-muted">${t('console.context.worldEntriesEmpty')}</div>`;
             return;
         }
+        const search = String(previousSearch || '').trim().toLowerCase();
+        const filteredEntries = entries.filter((entry) => entryMatchesSearch(entry, search));
         const header = `
             <div class="pi-world-entries-header">
                 <label class="pi-switch">
@@ -1502,8 +1559,18 @@ async function renderWorldEntryList(detailsEl, worldName, characterInfo) {
                 </label>
                 <span class="pi-muted">${t('console.context.worldEntriesCount', { selected: isAll ? entries.length : selectedSet.size, total: entries.length })}</span>
             </div>
+            <input class="text_pole pi-world-entry-search" type="search" data-pi-world-entry-search="${escapeHtml(worldName)}" value="${escapeHtml(previousSearch)}" placeholder="${escapeHtml(t('console.context.worldEntrySearch'))}">
         `;
-        const rows = entries.map((entry) => {
+        if (!filteredEntries.length) {
+            list.innerHTML = header + `<div class="pi-empty">${t('console.pool.noMatches')}</div>`;
+            if (shouldRefocus) {
+                const nextSearch = list.querySelector('[data-pi-world-entry-search]');
+                nextSearch?.focus?.();
+                nextSearch?.setSelectionRange?.(nextSearch.value.length, nextSearch.value.length);
+            }
+            return;
+        }
+        const rows = filteredEntries.map((entry) => {
             const checked = isAll || selectedSet.has(entry.uid);
             const label = entry.comment || entry.keys || `#${entry.uid}`;
             const sub = entry.comment && entry.keys ? entry.keys : '';
@@ -1517,7 +1584,12 @@ async function renderWorldEntryList(detailsEl, worldName, characterInfo) {
                 </label>
             `;
         }).join('');
-        list.innerHTML = header + `<div class="pi-world-entries-rows">${rows}</div>`;
+        list.innerHTML = header + `<div class="pi-world-entries-filter">${t('console.context.worldEntriesFilteredCount', { shown: filteredEntries.length, total: entries.length })}</div><div class="pi-world-entries-rows">${rows}</div>`;
+        if (shouldRefocus) {
+            const nextSearch = list.querySelector('[data-pi-world-entry-search]');
+            nextSearch?.focus?.();
+            nextSearch?.setSelectionRange?.(nextSearch.value.length, nextSearch.value.length);
+        }
     } catch (error) {
         list.innerHTML = `<div class="pi-muted">${escapeHtml(t('console.context.worldEntriesError'))}</div>`;
     }
@@ -1843,6 +1915,29 @@ function closeActiveInvitation() {
     }
 }
 
+function preloadImage(url, timeoutMs = coverPreloadTimeoutMs) {
+    return new Promise((resolve) => {
+        if (!url) {
+            resolve(false);
+            return;
+        }
+        let done = false;
+        const img = new Image();
+        const finish = (loaded) => {
+            if (done) {
+                return;
+            }
+            done = true;
+            clearTimeout(timer);
+            resolve(Boolean(loaded));
+        };
+        const timer = setTimeout(() => finish(false), timeoutMs);
+        img.onload = () => finish(true);
+        img.onerror = () => finish(false);
+        img.src = url;
+    });
+}
+
 function buildInvitationStyleVars(settings) {
     return [
         `--pi-invite-font-size:${settings.textFontSize}px`,
@@ -2054,13 +2149,17 @@ function createInvitationDialog(characterInfo, retention = false) {
     return dialog;
 }
 
-async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()), retention = false) {
+async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()), retention = false, options = {}) {
     const settings = ensureSettings();
     if (!settings.enabled || !characterInfo) {
         return false;
     }
 
     closeActiveInvitation();
+    await preloadImage(getCharacterAvatarUrl(characterInfo));
+    if (typeof options.shouldShow === 'function' && !options.shouldShow()) {
+        return false;
+    }
     const dialog = createInvitationDialog(characterInfo, retention);
     document.body.append(dialog);
     state.activeInvitation = dialog;
@@ -2152,17 +2251,62 @@ function markHomepageInvitationShown(force = false) {
     saveSettingsDebounced();
 }
 
+function clearHomepageRetryTimer() {
+    if (state.homepageRetryTimer) {
+        clearTimeout(state.homepageRetryTimer);
+        state.homepageRetryTimer = null;
+    }
+}
+
+function scheduleHomepageInvitationRetry() {
+    if (state.homepageRetryTimer) {
+        return;
+    }
+    state.homepageRetryTimer = setTimeout(() => {
+        state.homepageRetryTimer = null;
+        maybeShowHomepageInvitation();
+    }, homepageRetryDelayMs);
+}
+
+function isHomepageReadyForInvitation() {
+    const homepage = isHomepage();
+    if (!homepage) {
+        state.homepageStableSince = 0;
+        return false;
+    }
+
+    if (!state.homepageStableSince) {
+        state.homepageStableSince = Date.now();
+        return false;
+    }
+
+    const hasCharacters = getAvailableCharacters().length > 0;
+    const appReadyEnough = state.appReady || hasCharacters;
+    return appReadyEnough && Date.now() - state.homepageStableSince >= homepageStableDelayMs;
+}
+
 function maybeShowHomepageInvitation(force = false) {
     const settings = ensureSettings();
     if (!settings.enabled || (!settings.autoOpenOnHome && !force)) {
+        clearHomepageRetryTimer();
+        state.homepageInvitePending = false;
         return;
     }
 
     if (force) {
+        clearHomepageRetryTimer();
+        state.homepageInvitePending = false;
         state.homepageInviteShown = false;
     }
 
-    if (!force && (state.homepageInviteShown || !isHomepage() || isConsoleOpen() || state.activeInvitation || !shouldShowHomepageInvitation())) {
+    if (!force && (state.homepageInviteShown || state.homepageInviteLoading || !isHomepage() || isConsoleOpen() || state.activeInvitation || !shouldShowHomepageInvitation())) {
+        state.homepageInvitePending = false;
+        return;
+    }
+
+    if (!force && !isHomepageReadyForInvitation()) {
+        state.homepageInvitePending = true;
+        scheduleHomepageInvitationRetry();
         return;
     }
 
@@ -2170,31 +2314,53 @@ function maybeShowHomepageInvitation(force = false) {
     if (!pool.length) {
         if (force) {
             notify('warning', t('invitation.noPool'));
+        } else {
+            state.homepageInvitePending = true;
+            scheduleHomepageInvitationRetry();
         }
         return;
     }
 
-    markHomepageInvitationShown(force);
-    showInvitation(pickRandom(pool));
+    clearHomepageRetryTimer();
+    state.homepageInvitePending = false;
+    state.homepageInviteLoading = true;
+    const characterInfo = pickRandom(pool);
+    showInvitation(characterInfo, false, {
+        shouldShow: () => force || (isHomepage() && !isConsoleOpen() && !state.activeInvitation && !state.homepageInviteShown),
+    }).then((shown) => {
+        if (shown) {
+            markHomepageInvitationShown(force);
+        } else if (!force && isHomepage()) {
+            state.homepageInvitePending = true;
+            scheduleHomepageInvitationRetry();
+        }
+    }).finally(() => {
+        state.homepageInviteLoading = false;
+    });
 }
 
 function handleHomepageStateChanged() {
+    clearHomepageRetryTimer();
     clearTimeout(state.homepageCheckTimer);
     state.homepageCheckTimer = setTimeout(() => {
         const homepage = isHomepage();
         if (!homepage) {
             state.homepageInviteShown = false;
             state.wasHomepage = false;
+            state.homepageStableSince = 0;
+            state.homepageInvitePending = false;
+            state.homepageInviteLoading = false;
             closeActiveInvitation();
             return;
         }
 
         if (!state.wasHomepage) {
             state.homepageInviteShown = false;
+            state.homepageStableSince = Date.now();
         }
         state.wasHomepage = true;
         maybeShowHomepageInvitation();
-    }, 250);
+    }, homepageRetryDelayMs);
 }
 
 function pickRandom(list) {
@@ -2208,6 +2374,15 @@ function escapeHtml(value) {
     const div = document.createElement('div');
     div.textContent = String(value ?? '');
     return div.innerHTML;
+}
+
+function applyPanelTheme(root = state.overlay || document) {
+    const settings = ensureSettings();
+    const theme = panelThemeKeys.includes(settings.panelTheme) ? settings.panelTheme : defaultSettings.panelTheme;
+    const overlay = root?.id === 'pi_overlay' ? root : state.overlay || document.querySelector('#pi_overlay');
+    const modal = overlay?.querySelector?.('#pi_modal') || document.querySelector('#pi_modal');
+    overlay?.setAttribute?.('data-pi-panel-theme', theme);
+    modal?.setAttribute?.('data-pi-panel-theme', theme);
 }
 
 function applyTemplate(text, characterInfo) {
@@ -2768,9 +2943,10 @@ function isHomepage() {
 function syncSettingsFromDom(root = document) {
     const settings = ensureSettings();
     const isOverlayRoot = root === state.overlay || root?.id === 'pi_overlay';
-    const enabled = root.querySelector('#pi_enabled');
-    const showMenuEntry = root.querySelector('#pi_show_menu_entry');
-    const autoOpenOnHome = root.querySelector('#pi_auto_open_home');
+    const enabled = root.querySelector('#pi_enabled') || root.querySelector('#pi_control_enabled');
+    const showMenuEntry = root.querySelector('#pi_show_menu_entry') || root.querySelector('#pi_control_show_menu_entry');
+    const autoOpenOnHome = root.querySelector('#pi_auto_open_home') || root.querySelector('#pi_control_auto_open_home');
+    const panelTheme = root.querySelector('#pi_panel_theme');
     const poolText = root.querySelector('#pi_pool_text');
     const homepageTriggerMode = root.querySelector('#pi_homepage_trigger_mode');
     const homepageCooldownMinutes = root.querySelector('#pi_homepage_cooldown_minutes');
@@ -2832,6 +3008,9 @@ function syncSettingsFromDom(root = document) {
     }
     if (autoOpenOnHome) {
         settings.autoOpenOnHome = autoOpenOnHome.checked;
+    }
+    if (panelTheme) {
+        settings.panelTheme = panelThemeKeys.includes(panelTheme.value) ? panelTheme.value : defaultSettings.panelTheme;
     }
     if (poolText) {
         settings.poolText = poolText.value;
@@ -3032,9 +3211,10 @@ function syncSettingsFromDom(root = document) {
 
 function persistDialogueEditor(root = document) {
     const settings = ensureSettings();
-    const enabled = root.querySelector('#pi_enabled');
-    const showMenuEntry = root.querySelector('#pi_show_menu_entry');
-    const autoOpenOnHome = root.querySelector('#pi_auto_open_home');
+    const enabled = root.querySelector('#pi_enabled') || root.querySelector('#pi_control_enabled');
+    const showMenuEntry = root.querySelector('#pi_show_menu_entry') || root.querySelector('#pi_control_show_menu_entry');
+    const autoOpenOnHome = root.querySelector('#pi_auto_open_home') || root.querySelector('#pi_control_auto_open_home');
+    const panelTheme = root.querySelector('#pi_panel_theme');
     const poolText = root.querySelector('#pi_pool_text');
     const homepageTriggerMode = root.querySelector('#pi_homepage_trigger_mode');
     const homepageCooldownMinutes = root.querySelector('#pi_homepage_cooldown_minutes');
@@ -3079,6 +3259,9 @@ function persistDialogueEditor(root = document) {
     }
     if (autoOpenOnHome) {
         settings.autoOpenOnHome = autoOpenOnHome.checked;
+    }
+    if (panelTheme) {
+        settings.panelTheme = panelThemeKeys.includes(panelTheme.value) ? panelTheme.value : defaultSettings.panelTheme;
     }
     if (poolText) {
         settings.poolText = poolText.value;
@@ -3218,6 +3401,9 @@ function persistDialogueEditor(root = document) {
 
     saveSettingsDebounced();
     applyCustomCss();
+    applyPanelTheme(root);
+    updateMenuVisibility(document);
+    updateStatusBadge(state.settingsPanel || root);
     updateDialogueCount(root);
     updateRetentionCount(root);
     renderPreview(root);
@@ -3227,9 +3413,10 @@ function persistDialogueEditor(root = document) {
 
 function syncDomFromSettings(root = document) {
     const settings = ensureSettings();
-    const enabled = root.querySelector('#pi_enabled');
-    const showMenuEntry = root.querySelector('#pi_show_menu_entry');
-    const autoOpenOnHome = root.querySelector('#pi_auto_open_home');
+    const enabled = root.querySelector('#pi_enabled') || root.querySelector('#pi_control_enabled');
+    const showMenuEntry = root.querySelector('#pi_show_menu_entry') || root.querySelector('#pi_control_show_menu_entry');
+    const autoOpenOnHome = root.querySelector('#pi_auto_open_home') || root.querySelector('#pi_control_auto_open_home');
+    const panelTheme = root.querySelector('#pi_panel_theme');
     const poolText = root.querySelector('#pi_pool_text');
     const homepageTriggerMode = root.querySelector('#pi_homepage_trigger_mode');
     const homepageCooldownMinutes = root.querySelector('#pi_homepage_cooldown_minutes');
@@ -3288,6 +3475,9 @@ function syncDomFromSettings(root = document) {
     }
     if (autoOpenOnHome) {
         autoOpenOnHome.checked = settings.autoOpenOnHome;
+    }
+    if (panelTheme) {
+        panelTheme.value = settings.panelTheme;
     }
     if (poolText) {
         poolText.value = settings.poolText;
@@ -3610,6 +3800,7 @@ function renderTokenEstimate(root = state.overlay || document) {
 function refreshUi() {
     updateMenuVisibility(document);
     updateStatusBadge(state.settingsPanel || document);
+    applyPanelTheme(state.overlay || document);
     renderCharacterPool(state.overlay || document);
     renderDialogueEditor(state.overlay || document);
     renderRetentionEditor(state.overlay || document);
@@ -3659,6 +3850,8 @@ function openConsole(tab = 'pool') {
 
     state.activeTab = tab;
     overlay.style.display = '';
+    syncDomFromSettings(overlay);
+    applyPanelTheme(overlay);
     setActiveTab(tab, overlay);
     renderCharacterPool(overlay);
     renderDialogueEditor(overlay);
@@ -4487,12 +4680,6 @@ function bindConsoleEvents(root) {
         closeButton.addEventListener('click', closeConsole);
     }
 
-    root.addEventListener('click', (event) => {
-        if (event.target === root) {
-            closeConsole();
-        }
-    });
-
     const retentionChance = root.querySelector('#pi_retention_chance');
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
@@ -4643,25 +4830,22 @@ function bindConsoleEvents(root) {
                 if (!characterInfo) return;
                 const worldName = target.dataset.piWorldEntryWorld;
                 const detailsEl = target.closest('.pi-world-book');
-                const allInput = detailsEl?.querySelector('input[data-pi-world-all]');
-                const entryInputs = detailsEl?.querySelectorAll('input[data-pi-world-entry-uid]') || [];
-                const checkedUids = Array.from(entryInputs).filter((el) => el.checked).map((el) => Number(el.dataset.piWorldEntryUid));
-                const totalEntries = entryInputs.length;
-                if (allInput) {
-                    allInput.checked = checkedUids.length === totalEntries;
-                }
-                setCharacterWorldEntries(characterInfo, worldName, checkedUids.length === totalEntries ? 'all' : checkedUids);
-                saveSettingsDebounced();
-                const meta = detailsEl?.querySelector('.pi-world-book-meta');
-                if (meta) {
-                    meta.textContent = checkedUids.length === totalEntries
-                        ? t('console.context.worldEntriesAllShort')
-                        : t('console.context.worldEntriesCountShort', { count: checkedUids.length });
-                }
-                const headerCount = detailsEl?.querySelector('.pi-world-entries-header .pi-muted');
-                if (headerCount) {
-                    headerCount.textContent = t('console.context.worldEntriesCount', { selected: checkedUids.length, total: totalEntries });
-                }
+                getWorldEntriesCached(worldName).then((entries) => {
+                    const currentStored = getCharacterWorldEntries(characterInfo, worldName);
+                    const selectedUids = currentStored === 'all'
+                        ? new Set(entries.map((entry) => entry.uid))
+                        : new Set(Array.isArray(currentStored) ? currentStored : []);
+                    const uid = Number(target.dataset.piWorldEntryUid);
+                    if (target.checked) {
+                        selectedUids.add(uid);
+                    } else {
+                        selectedUids.delete(uid);
+                    }
+                    const next = selectedUids.size === entries.length ? 'all' : Array.from(selectedUids);
+                    setCharacterWorldEntries(characterInfo, worldName, next);
+                    saveSettingsDebounced();
+                    updateWorldEntrySelectionMeta(detailsEl, worldName, characterInfo, entries);
+                });
                 return;
             }
 
@@ -4669,24 +4853,10 @@ function bindConsoleEvents(root) {
                 if (!characterInfo) return;
                 const worldName = target.dataset.piWorldAll;
                 const detailsEl = target.closest('.pi-world-book');
-                const entryInputs = detailsEl?.querySelectorAll('input[data-pi-world-entry-uid]') || [];
-                entryInputs.forEach((el) => { el.checked = target.checked; });
-                if (target.checked) {
-                    setCharacterWorldEntries(characterInfo, worldName, 'all');
-                } else {
-                    setCharacterWorldEntries(characterInfo, worldName, []);
-                }
+                detailsEl?.querySelectorAll('input[data-pi-world-entry-uid]').forEach((el) => { el.checked = target.checked; });
+                setCharacterWorldEntries(characterInfo, worldName, target.checked ? 'all' : []);
                 saveSettingsDebounced();
-                const meta = detailsEl?.querySelector('.pi-world-book-meta');
-                if (meta) {
-                    meta.textContent = target.checked
-                        ? t('console.context.worldEntriesAllShort')
-                        : t('console.context.worldEntriesCountShort', { count: 0 });
-                }
-                const headerCount = detailsEl?.querySelector('.pi-world-entries-header .pi-muted');
-                if (headerCount) {
-                    headerCount.textContent = t('console.context.worldEntriesCount', { selected: target.checked ? entryInputs.length : 0, total: entryInputs.length });
-                }
+                getWorldEntriesCached(worldName).then((entries) => updateWorldEntrySelectionMeta(detailsEl, worldName, characterInfo, entries));
                 return;
             }
 
@@ -4720,6 +4890,17 @@ function bindConsoleEvents(root) {
             const characterInfo = getSelectedCharacter();
             renderWorldEntryList(detailsEl, worldName, characterInfo);
         }, true);
+
+        worldInfoList.addEventListener('input', (event) => {
+            const search = event.target?.closest?.('[data-pi-world-entry-search]');
+            if (!search) return;
+            const detailsEl = search.closest('.pi-world-book');
+            const worldName = search.dataset.piWorldEntrySearch || detailsEl?.dataset?.piWorldName;
+            if (!detailsEl || !worldName) return;
+            detailsEl.dataset.piWorldEntrySearch = String(search.value || '');
+            const characterInfo = getSelectedCharacter();
+            renderWorldEntryList(detailsEl, worldName, characterInfo);
+        });
     }
 
     const worldSearch = root.querySelector('#pi_world_search');
@@ -4862,6 +5043,10 @@ function bindConsoleEvents(root) {
         '#pi_enabled',
         '#pi_show_menu_entry',
         '#pi_auto_open_home',
+        '#pi_control_enabled',
+        '#pi_control_show_menu_entry',
+        '#pi_control_auto_open_home',
+        '#pi_panel_theme',
         '#pi_pool_text',
         '#pi_homepage_trigger_mode',
         '#pi_homepage_cooldown_minutes',
@@ -5010,6 +5195,7 @@ async function init() {
 
 function registerEventHandlers() {
     eventSource?.on?.(event_types.APP_READY, () => {
+        state.appReady = true;
         refreshUi();
         handleHomepageStateChanged();
     });

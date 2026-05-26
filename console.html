@@ -622,7 +622,32 @@
                         <strong data-i18n="console.control.title">运行控制</strong>
                         <span class="pi-muted" data-i18n="console.control.note">触发规则、全局开关、实时预览。</span>
                     </div>
-                    <div class="pi-muted pi-control-hint" data-i18n="console.control.globalNote">全局总开关 / 菜单入口 / 主页自动弹出，仍在 SillyTavern 扩展设置面板里管理（避免重复维护）。</div>
+                    <div class="pi-muted pi-control-hint" data-i18n="console.control.globalNote">常用运行开关也可以在这里管理，不需要回到 SillyTavern 扩展设置面板。</div>
+                    <div class="pi-control-switch-grid">
+                        <label class="pi-switch">
+                            <input id="pi_control_enabled" type="checkbox">
+                            <span data-i18n="settings.enabled">启用功能</span>
+                        </label>
+                        <label class="pi-switch">
+                            <input id="pi_control_show_menu_entry" type="checkbox">
+                            <span data-i18n="settings.menuEntry">显示扩展菜单入口</span>
+                        </label>
+                        <label class="pi-switch">
+                            <input id="pi_control_auto_open_home" type="checkbox">
+                            <span data-i18n="settings.autoOpenHome">主页自动弹出</span>
+                        </label>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_panel_theme" data-i18n="console.control.panelTheme">控制台面板主题</label>
+                        <select id="pi_panel_theme" class="text_pole">
+                            <option value="midnight" data-i18n="console.control.panelTheme.midnight">夜幕金</option>
+                            <option value="parchment" data-i18n="console.control.panelTheme.parchment">羊皮纸</option>
+                            <option value="ember" data-i18n="console.control.panelTheme.ember">余烬红</option>
+                            <option value="jade" data-i18n="console.control.panelTheme.jade">青玉绿</option>
+                            <option value="st" data-i18n="console.control.panelTheme.st">跟随 SillyTavern</option>
+                        </select>
+                        <small class="pi-muted" data-i18n="console.control.panelThemeNote">默认使用插件内置配色，避免酒馆主题颜色过亮或过暗时看不清。</small>
+                    </div>
                 </div>
 
                 <div class="pi-card">

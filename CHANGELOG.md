@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Panel stability and usability improvements. Version number for the first public release will be finalized once the codebase is stable.
+
+### Added
+
+- `panelTheme` setting with five built-in console themes (`midnight` / `parchment` / `ember` / `jade` / `st`); `midnight` is the default so the console no longer depends entirely on SillyTavern theme tokens. `st` follows the SillyTavern theme.
+- Run-control tab consolidating the most-used switches (enable plugin, show menu entry, enable homepage auto-popup) without removing the originals from the settings drawer.
+- World-info entry search box: filter entries inside a book by title, keyword, or body text without losing checked entries that the filter hides.
+
+### Changed
+
+- Mobile console tab bar is now a horizontal compact-chip scroller (50px high, 32px tab) using inner `box-shadow` for active/focus state so the parent's overflow scroll does not crop the indicator.
+- Mobile layout: `.pi-mini-preview-bar` (appearance live preview) and `.pi-current-character-banner` (AI tab current-character banner) now stay sticky while scrolling, matching desktop behavior. Earlier rule that forced them to `position: relative` on mobile is removed.
+- Copy tab desktop character row uses an explicit four-column grid so badges and character info no longer misalign.
+- `.pi-header` / `.pi-tabs` are now non-shrinkable flex items and `.pi-body` carries `min-height: 0` for the scroll container, preventing sticky regions and content from squeezing the top tab bar.
+
+### Fixed
+
+- Clicking on console blank areas no longer accidentally closes the modal.
+- Homepage auto-invitation now waits for `APP_READY` or the character list to be available and for the homepage to be stable for ~1.5s before firing.
+- Cover artwork is preloaded before the invitation pops out, with a timeout fallback; preload completion re-checks that the user is still on the homepage, reducing premature pops on slow VPS that prevented entry.
+
 ## [0.1.0] - 2026-05-26
 
 Initial public-preparation release.
