@@ -4,4 +4,5 @@ dist/
 .claude/
 .env
 .env.*
+.work-plans/
 

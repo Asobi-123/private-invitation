@@ -333,18 +333,30 @@
                                         <span data-i18n="console.context.chunkSize">每批楼层数</span>
                                         <input id="pi_chat_chunk_size" type="number" min="1" max="500" step="1" class="text_pole pi-number">
                                     </label>
+                                    <label class="pi-field pi-field--floor">
+                                        <span data-i18n="console.context.batchDelay">批次间延迟</span>
+                                        <input id="pi_chat_batch_delay" type="number" min="0" max="5000" step="100" class="text_pole pi-number">
+                                    </label>
                                 </div>
-                                <small class="pi-muted" data-i18n="console.context.chunkSummary">实际本次发送：从「起始楼层」开始，最多取「每批楼层数」条，到「结束楼层」为止（取较小者）。</small>
+                                <small class="pi-muted" data-i18n="console.context.chunkSummary">插件会从「起始楼层」开始，按「每批楼层数」分批连续发送，直到「结束楼层」为止。每批单独调用 AI，结果合并入草稿池。</small>
                                 <div class="pi-field">
-                                    <label for="pi_chat_filter_tags" data-i18n="console.context.filterTags">过滤标签</label>
-                                    <input id="pi_chat_filter_tags" type="text" class="text_pole" data-i18n-placeholder="console.context.filterTagsPlaceholder" placeholder="例如 回忆,summary，留空表示注入全文">
-                                    <small class="pi-muted" data-i18n="console.context.filterTagsNote">填了标签名后，只把 &lt;标签&gt;...&lt;/标签&gt; 包裹的内容送给 AI，过滤掉日常对话噪声。多个标签用逗号分隔。</small>
+                                    <label for="pi_chat_filter_tags_input" data-i18n="console.context.filterTags">过滤标签</label>
+                                    <div class="pi-tag-chip-pool pi-tag-chip-pool--filter" data-pi-tag-pool="filter">
+                                        <input id="pi_chat_filter_tags_input" class="pi-tag-chip-pool__input" type="text" data-i18n-placeholder="console.context.filterTagsChipPlaceholder" placeholder="敲回车或逗号添加，例 回忆">
+                                    </div>
+                                    <small class="pi-muted" data-i18n="console.context.filterTagsNote">填了标签名后，只把 &lt;标签&gt;...&lt;/标签&gt; 包裹的内容送给 AI，过滤掉日常对话噪声。</small>
                                 </div>
                                 <div class="pi-field">
-                                    <label for="pi_chat_exclude_tags" data-i18n="console.context.excludeTags">排除标签</label>
-                                    <input id="pi_chat_exclude_tags" type="text" class="text_pole" data-i18n-placeholder="console.context.excludeTagsPlaceholder" placeholder="例如 thinking,system，留空表示不排除">
+                                    <label for="pi_chat_exclude_tags_input" data-i18n="console.context.excludeTags">排除标签</label>
+                                    <div class="pi-tag-chip-pool pi-tag-chip-pool--exclude" data-pi-tag-pool="exclude">
+                                        <input id="pi_chat_exclude_tags_input" class="pi-tag-chip-pool__input" type="text" data-i18n-placeholder="console.context.excludeTagsChipPlaceholder" placeholder="敲回车或逗号添加，例 thinking">
+                                    </div>
                                     <small class="pi-muted" data-i18n="console.context.excludeTagsNote">先把 &lt;标签&gt;...&lt;/标签&gt; 包裹的内容从聊天里剥掉，再做包含过滤。用来去掉系统提示、思考过程等噪声。</small>
                                 </div>
+                                <label class="pi-switch">
+                                    <input id="pi_strip_html_noise" type="checkbox">
+                                    <span data-i18n="console.context.stripHtmlNoise">剥离 HTML 注释和 img 标签</span>
+                                </label>
                                 <input id="pi_chat_file_search" class="text_pole pi-context-search" type="search" data-i18n-placeholder="console.context.chatSearch" placeholder="搜索聊天文件">
                                 <div class="pi-actions-row pi-actions-row--compact">
                                     <button id="pi_refresh_chat_files" type="button" class="menu_button" data-i18n="console.context.refreshChats">刷新聊天文件</button>

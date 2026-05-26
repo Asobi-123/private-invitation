@@ -108,7 +108,7 @@ function extractTaggedContent(text, tags) {
     const collected = [];
     for (const tag of tags) {
         const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`<\\s*${escaped}\\s*>([\\s\\S]*?)<\\s*/\\s*${escaped}\\s*>`, 'gi');
+        const regex = new RegExp(`<\\s*${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\s*/\\s*${escaped}\\s*>`, 'gi');
         let match;
         while ((match = regex.exec(source)) !== null) {
             const inner = match[1].trim();
@@ -118,6 +118,147 @@ function extractTaggedContent(text, tags) {
         }
     }
     return collected.join('\n');
+}
+
+function getTagListFromSettings(kind) {
+    const settings = ensureSettings();
+    const raw = kind === 'filter' ? settings.chatFilterTags : settings.chatExcludeTags;
+    return parseFilterTagList(raw);
+}
+
+function setTagListToSettings(kind, list) {
+    const settings = ensureSettings();
+    const value = list.join(', ');
+    if (kind === 'filter') {
+        settings.chatFilterTags = value;
+    } else {
+        settings.chatExcludeTags = value;
+    }
+    saveSettingsDebounced();
+}
+
+function addTagsFromText(kind, text) {
+    const incoming = parseFilterTagList(text);
+    if (!incoming.length) return false;
+    const existing = getTagListFromSettings(kind);
+    const existingLower = new Set(existing.map((t) => t.toLowerCase()));
+    let changed = false;
+    for (const tag of incoming) {
+        const key = tag.toLowerCase();
+        if (!existingLower.has(key)) {
+            existing.push(tag);
+            existingLower.add(key);
+            changed = true;
+        }
+    }
+    if (changed) {
+        setTagListToSettings(kind, existing);
+    }
+    return changed;
+}
+
+function removeTagByValue(kind, tag) {
+    const list = getTagListFromSettings(kind);
+    const filtered = list.filter((t) => t !== tag);
+    if (filtered.length === list.length) return false;
+    setTagListToSettings(kind, filtered);
+    return true;
+}
+
+function renderTagChips(root, kind) {
+    const scope = root || state.overlay || document;
+    const pool = scope.querySelector?.(`[data-pi-tag-pool="${kind}"]`);
+    if (!pool) return;
+    const input = pool.querySelector('.pi-tag-chip-pool__input');
+    pool.querySelectorAll('.pi-chip').forEach((el) => el.remove());
+    const list = getTagListFromSettings(kind);
+    for (const tag of list) {
+        const chip = document.createElement('span');
+        chip.className = `pi-chip pi-chip--${kind}`;
+        chip.dataset.piTag = tag;
+
+        const textEl = document.createElement('span');
+        textEl.className = 'pi-chip-text';
+        textEl.textContent = tag;
+        chip.appendChild(textEl);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'pi-chip-remove';
+        removeBtn.textContent = '×';
+        removeBtn.dataset.piTagRemove = tag;
+        chip.appendChild(removeBtn);
+
+        if (input) {
+            pool.insertBefore(chip, input);
+        } else {
+            pool.appendChild(chip);
+        }
+    }
+}
+
+function bindTagChipPool(root, kind) {
+    const scope = root || state.overlay || document;
+    const pool = scope.querySelector?.(`[data-pi-tag-pool="${kind}"]`);
+    if (!pool) return;
+    const input = pool.querySelector('.pi-tag-chip-pool__input');
+    if (!input) return;
+
+    const commit = () => {
+        const text = input.value;
+        if (!text) return false;
+        const added = addTagsFromText(kind, text);
+        input.value = '';
+        if (added) {
+            renderTagChips(scope, kind);
+        }
+        return added;
+    };
+
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ',' || event.key === '，' || event.key === ';' || event.key === '；') {
+            event.preventDefault();
+            commit();
+        } else if (event.key === 'Backspace' && input.value === '') {
+            const list = getTagListFromSettings(kind);
+            if (list.length > 0) {
+                list.pop();
+                setTagListToSettings(kind, list);
+                renderTagChips(scope, kind);
+            }
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        if (input.value.trim()) commit();
+    });
+
+    input.addEventListener('paste', (event) => {
+        const pasted = event.clipboardData?.getData?.('text');
+        if (!pasted) return;
+        if (/[,;\n\r，；]/.test(pasted)) {
+            event.preventDefault();
+            const combined = input.value + pasted;
+            input.value = '';
+            if (addTagsFromText(kind, combined)) {
+                renderTagChips(scope, kind);
+            }
+        }
+    });
+
+    pool.addEventListener('click', (event) => {
+        const removeBtn = event.target?.closest?.('.pi-chip-remove');
+        if (removeBtn) {
+            const tag = removeBtn.dataset.piTagRemove;
+            if (tag !== undefined && removeTagByValue(kind, tag)) {
+                renderTagChips(scope, kind);
+            }
+            return;
+        }
+        if (event.target === pool) {
+            input.focus();
+        }
+    });
 }
 
 function applyCustomCss() {
@@ -139,7 +280,7 @@ function stripTaggedContent(text, tags) {
     let result = String(text || '');
     for (const tag of tags) {
         const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`<\\s*${escaped}\\s*>[\\s\\S]*?<\\s*/\\s*${escaped}\\s*>`, 'gi');
+        const regex = new RegExp(`<\\s*${escaped}(?:\\s[^>]*)?>[\\s\\S]*?<\\s*/\\s*${escaped}\\s*>`, 'gi');
         result = result.replace(regex, '');
     }
     return result;
@@ -264,6 +405,8 @@ const defaultSettings = {
     chatFloorStart: 0,
     chatFloorEnd: 80,
     chatChunkSize: 40,
+    chatBatchDelayMs: 500,
+    stripHtmlNoise: true,
     chatFilterTags: '',
     chatExcludeTags: '',
     worldEntryLimit: 40,
@@ -449,6 +592,8 @@ const state = {
     appReadyAt: 0,
     chatFileCache: new Map(),
     invitationFromConsoleTest: false,
+    aiBatchAbortRequested: false,
+    aiBatchActiveKind: null,
     shownThisRound: new Set(),
     continueCount: 0,
 };
@@ -833,6 +978,8 @@ function ensureSettings() {
         settings.chatFloorEnd = settings.chatFloorStart;
     }
     settings.chatChunkSize = clampNumber(settings.chatChunkSize, 1, 500, defaultSettings.chatChunkSize);
+    settings.chatBatchDelayMs = clampNumber(settings.chatBatchDelayMs, 0, 5000, defaultSettings.chatBatchDelayMs);
+    settings.stripHtmlNoise = settings.stripHtmlNoise !== false;
     settings.chatFilterTags = String(settings.chatFilterTags || '');
     settings.chatExcludeTags = String(settings.chatExcludeTags || '');
     settings.worldEntryLimit = clampNumber(settings.worldEntryLimit, 1, 300, defaultSettings.worldEntryLimit);
@@ -1762,12 +1909,12 @@ function renderDialogueEditor(root = state.overlay || document) {
     const promptPreset = root?.querySelector?.('#pi_ai_prompt_preset');
     const promptBody = root?.querySelector?.('#pi_ai_prompt_body');
     const useChatContext = root?.querySelector?.('#pi_ai_use_chat_context');
+    const stripHtmlNoiseEl = root?.querySelector?.('#pi_strip_html_noise');
     const useWorldInfo = root?.querySelector?.('#pi_ai_use_world_info');
     const chatFloorStart = root?.querySelector?.('#pi_chat_floor_start');
     const chatFloorEnd = root?.querySelector?.('#pi_chat_floor_end');
     const chatChunkSize = root?.querySelector?.('#pi_chat_chunk_size');
-    const chatFilterTags = root?.querySelector?.('#pi_chat_filter_tags');
-    const chatExcludeTags = root?.querySelector?.('#pi_chat_exclude_tags');
+    const chatBatchDelay = root?.querySelector?.('#pi_chat_batch_delay');
     const worldEntryLimit = root?.querySelector?.('#pi_world_entry_limit');
     const batchCount = root?.querySelector?.('#pi_ai_batch_count');
     const maxTokens = root?.querySelector?.('#pi_ai_max_tokens');
@@ -1784,6 +1931,9 @@ function renderDialogueEditor(root = state.overlay || document) {
     if (useChatContext) {
         useChatContext.checked = settings.aiUseChatContext;
     }
+    if (stripHtmlNoiseEl) {
+        stripHtmlNoiseEl.checked = settings.stripHtmlNoise;
+    }
     if (useWorldInfo) {
         useWorldInfo.checked = settings.aiUseWorldInfo;
     }
@@ -1796,12 +1946,11 @@ function renderDialogueEditor(root = state.overlay || document) {
     if (chatChunkSize) {
         chatChunkSize.value = String(settings.chatChunkSize);
     }
-    if (chatFilterTags) {
-        chatFilterTags.value = settings.chatFilterTags || '';
+    if (chatBatchDelay) {
+        chatBatchDelay.value = String(settings.chatBatchDelayMs);
     }
-    if (chatExcludeTags) {
-        chatExcludeTags.value = settings.chatExcludeTags || '';
-    }
+    renderTagChips(root, 'filter');
+    renderTagChips(root, 'exclude');
     if (worldEntryLimit) {
         worldEntryLimit.value = String(settings.worldEntryLimit);
     }
@@ -2903,14 +3052,21 @@ function limitText(text, maxLength = maxContextChars) {
     return value.slice(value.length - maxLength);
 }
 
-function formatChatMessage(message, index, filterTags = [], excludeTags = []) {
+function stripHtmlNoise(text) {
+    return String(text || '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<\s*(img|br|hr|input|meta|source|track|wbr|area|base|col|embed|link|param)\b[^>]*\/?>/gi, '');
+}
+
+function formatChatMessage(message, index, filterTags = [], excludeTags = [], stripHtml = false) {
     if (!message || typeof message !== 'object') {
         return '';
     }
 
     const name = String(message.name || (message.is_user ? getContext?.()?.name1 : getContext?.()?.name2) || '').trim();
     const raw = String(message.mes || '');
-    const stripped = excludeTags.length ? stripTaggedContent(raw, excludeTags) : raw;
+    const cleaned = stripHtml ? stripHtmlNoise(raw) : raw;
+    const stripped = excludeTags.length ? stripTaggedContent(cleaned, excludeTags) : cleaned;
     const filtered = filterTags.length ? extractTaggedContent(stripped, filterTags) : stripped;
     const text = String(filtered || '').replace(/\s+/g, ' ').trim();
     if (!text) {
@@ -2920,20 +3076,45 @@ function formatChatMessage(message, index, filterTags = [], excludeTags = []) {
     return `#${index} ${name ? `${name}: ` : ''}${text}`;
 }
 
-function sliceChatMessages(messages, settings) {
+function sliceChatMessages(messages, settings, override) {
     if (!Array.isArray(messages) || !messages.length) {
         return [];
     }
 
-    const start = clampNumber(settings.chatFloorStart, 0, messages.length - 1, 0);
-    const requestedEnd = clampNumber(settings.chatFloorEnd, start, messages.length - 1, Math.min(messages.length - 1, start + settings.chatChunkSize - 1));
-    const chunkEnd = Math.min(requestedEnd, start + settings.chatChunkSize - 1);
+    let start;
+    let chunkEnd;
+    if (override && typeof override.rangeStart === 'number' && typeof override.rangeEnd === 'number') {
+        if (override.rangeStart > messages.length - 1) {
+            return [];
+        }
+        start = clampNumber(override.rangeStart, 0, messages.length - 1, 0);
+        chunkEnd = clampNumber(override.rangeEnd, start, messages.length - 1, start);
+    } else {
+        start = clampNumber(settings.chatFloorStart, 0, messages.length - 1, 0);
+        const requestedEnd = clampNumber(settings.chatFloorEnd, start, messages.length - 1, Math.min(messages.length - 1, start + settings.chatChunkSize - 1));
+        chunkEnd = Math.min(requestedEnd, start + settings.chatChunkSize - 1);
+    }
     const filterTags = parseFilterTagList(settings.chatFilterTags);
     const excludeTags = parseFilterTagList(settings.chatExcludeTags);
     return messages
         .slice(start, chunkEnd + 1)
-        .map((message, offset) => formatChatMessage(message, start + offset, filterTags, excludeTags))
+        .map((message, offset) => formatChatMessage(message, start + offset, filterTags, excludeTags, settings.stripHtmlNoise))
         .filter(Boolean);
+}
+
+function computeBatchRanges(settings) {
+    const start = Math.max(0, Number(settings.chatFloorStart) | 0);
+    const end = Math.max(start, Number(settings.chatFloorEnd) | 0);
+    const chunkSize = Math.max(1, Number(settings.chatChunkSize) | 0);
+    const ranges = [];
+    for (let cursor = start; cursor <= end; cursor += chunkSize) {
+        ranges.push({ rangeStart: cursor, rangeEnd: Math.min(cursor + chunkSize - 1, end) });
+    }
+    return ranges;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function fetchChatFileMessages(characterInfo, fileName) {
@@ -2970,32 +3151,47 @@ async function fetchChatFileMessages(characterInfo, fileName) {
     }
 }
 
-async function buildChatContext(characterInfo) {
+async function collectChatContextSources(characterInfo) {
     const settings = ensureSettings();
     if (!settings.aiUseChatContext) {
-        return '';
+        return [];
     }
 
     const selectedFiles = getSelectedChatFiles(characterInfo);
-    const sections = [];
+    const sources = [];
     const currentChat = getContext?.()?.chat;
 
     if (!selectedFiles.length && Array.isArray(currentChat) && currentChat.length) {
-        const lines = sliceChatMessages(currentChat, settings);
-        if (lines.length) {
-            sections.push(`current chat\n${lines.join('\n')}`);
-        }
+        sources.push({ label: 'current chat', messages: currentChat });
     }
 
     for (const fileName of selectedFiles) {
         const messages = await fetchChatFileMessages(characterInfo, fileName);
-        const lines = sliceChatMessages(messages, settings);
-        if (lines.length) {
-            sections.push(`${fileName}\n${lines.join('\n')}`);
+        if (Array.isArray(messages) && messages.length) {
+            sources.push({ label: fileName, messages });
         }
     }
+    return sources;
+}
 
+function renderSourcesForRange(sources, settings, range) {
+    const sections = [];
+    for (const source of sources) {
+        const lines = sliceChatMessages(source.messages, settings, range);
+        if (lines.length) {
+            sections.push(`${source.label}\n${lines.join('\n')}`);
+        }
+    }
     return limitText(sections.join('\n\n'), maxContextChars);
+}
+
+async function buildChatContext(characterInfo, range) {
+    const sources = await collectChatContextSources(characterInfo);
+    if (!sources.length) {
+        return '';
+    }
+    const settings = ensureSettings();
+    return renderSourcesForRange(sources, settings, range);
 }
 
 function formatWorldEntry(entry) {
@@ -3152,11 +3348,10 @@ function getPromptPresetText(characterInfo, kind = 'dialogue') {
         .replace(/\{count\}/g, String(count));
 }
 
-async function generateAiMessages(characterInfo, kind = 'dialogue') {
+async function runSingleGenerate(characterInfo, kind, chatContext) {
     const settings = ensureSettings();
     const batchCount = settings[batchCountFieldFor(kind)];
     const persona = buildCharacterPersonaContext(characterInfo);
-    const chatContext = await buildChatContext(characterInfo);
     const worldContext = await buildWorldInfoContext(characterInfo);
     const selectedPrompt = getPromptPresetText(characterInfo, kind);
     const customPrompt = applyTemplate(String(settings[aiPromptFieldFor(kind)] || '').trim(), characterInfo);
@@ -3186,16 +3381,55 @@ async function generateAiMessages(characterInfo, kind = 'dialogue') {
     return parseGeneratedLines(reply).slice(0, batchCount);
 }
 
+async function generateAiMessages(characterInfo, kind = 'dialogue', options = {}) {
+    const { onProgress, shouldAbort } = options;
+    const settings = ensureSettings();
+
+    if (!settings.aiUseChatContext) {
+        return runSingleGenerate(characterInfo, kind, '');
+    }
+    const sources = await collectChatContextSources(characterInfo);
+    if (!sources.length) {
+        return runSingleGenerate(characterInfo, kind, '');
+    }
+
+    const ranges = computeBatchRanges(settings);
+    if (ranges.length === 0) {
+        return runSingleGenerate(characterInfo, kind, '');
+    }
+    if (ranges.length === 1) {
+        const chatContext = renderSourcesForRange(sources, settings, ranges[0]);
+        return runSingleGenerate(characterInfo, kind, chatContext);
+    }
+
+    const collected = [];
+    for (let i = 0; i < ranges.length; i++) {
+        if (shouldAbort?.()) break;
+        const chatContext = renderSourcesForRange(sources, settings, ranges[i]);
+        if (!chatContext.trim()) {
+            onProgress?.({ current: i + 1, total: ranges.length, phase: 'skip' });
+            continue;
+        }
+        onProgress?.({ current: i + 1, total: ranges.length, phase: 'sending' });
+        try {
+            const lines = await runSingleGenerate(characterInfo, kind, chatContext);
+            collected.push(...lines);
+            onProgress?.({ current: i + 1, total: ranges.length, phase: 'done' });
+        } catch (err) {
+            onProgress?.({ current: i + 1, total: ranges.length, phase: 'error', error: err });
+            break;
+        }
+        if (i < ranges.length - 1 && settings.chatBatchDelayMs > 0 && !shouldAbort?.()) {
+            await sleep(settings.chatBatchDelayMs);
+        }
+    }
+    return collected;
+}
+
 function aiButtonIdFor(kind) {
     if (kind === 'retention') return '#pi_retention_ai_generate_batch';
     if (kind === 'anger') return '#pi_anger_ai_generate_batch';
     return '#pi_ai_generate_batch';
-}
-
-function generatingLabelFor(kind) {
-    if (kind === 'retention') return t('console.retention.generating');
-    if (kind === 'anger') return t('console.anger.generating');
-    return t('console.dialogue.generating');
 }
 
 function generateBatchLabelFor(kind) {
@@ -3216,7 +3450,29 @@ function generateFailedLabelFor(kind) {
     return t('console.dialogue.generateFailed');
 }
 
+function batchI18n(kind, suffix, params) {
+    const scope = kind === 'retention' || kind === 'anger' ? kind : 'dialogue';
+    return t(`console.${scope}.${suffix}`, params);
+}
+
 async function handleGenerateAiBatch(root = state.overlay || document, kind = 'dialogue') {
+    if (state.aiBatchActiveKind === kind) {
+        if (!state.aiBatchAbortRequested) {
+            state.aiBatchAbortRequested = true;
+            const cancelBtn = root.querySelector(aiButtonIdFor(kind));
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                const progress = state.aiBatchProgress || { current: 0, total: 0 };
+                cancelBtn.textContent = batchI18n(kind, 'cancelling', progress);
+            }
+        }
+        return;
+    }
+    if (state.aiBatchActiveKind) {
+        notify('warning', t('console.context.batchBusy'));
+        return;
+    }
+
     const characterInfo = getSelectedCharacter();
     if (!characterInfo) {
         notify('warning', t('console.dialogue.noCharacters'));
@@ -3224,32 +3480,66 @@ async function handleGenerateAiBatch(root = state.overlay || document, kind = 'd
     }
 
     const button = root.querySelector(aiButtonIdFor(kind));
-    const generatingLabel = generatingLabelFor(kind);
     const defaultLabel = generateBatchLabelFor(kind);
+    const defaultTitle = button?.getAttribute('title') || '';
+    state.aiBatchAbortRequested = false;
+    state.aiBatchActiveKind = kind;
+    state.aiBatchProgress = { current: 0, total: 0 };
+
     if (button) {
-        button.disabled = true;
-        button.textContent = generatingLabel;
+        button.disabled = false;
+        button.textContent = batchI18n(kind, 'cancelStart');
+        button.setAttribute('title', batchI18n(kind, 'cancelTooltip'));
     }
 
+    let lastProgress = { current: 0, total: 0 };
+    const onProgress = (info) => {
+        lastProgress = info;
+        state.aiBatchProgress = info;
+        if (info.phase === 'sending' && button && !state.aiBatchAbortRequested) {
+            button.textContent = batchI18n(kind, 'cancelInProgress', { current: info.current, total: info.total });
+        }
+        if (info.phase === 'done') {
+            notify('info', batchI18n(kind, 'batchDone', { current: info.current, total: info.total }));
+        }
+    };
+    const shouldAbort = () => state.aiBatchAbortRequested;
+
     try {
-        const lines = await generateAiMessages(characterInfo, kind);
+        const lines = await generateAiMessages(characterInfo, kind, { onProgress, shouldAbort });
+        const aborted = state.aiBatchAbortRequested;
         if (!lines.length) {
             notify('warning', generateEmptyLabelFor(kind));
             return;
         }
-
         appendDraftLines(characterInfo, kind, lines);
         renderDraftList(root, kind);
         saveSettingsDebounced();
+
+        if (aborted && lastProgress.total > 1) {
+            notify('warning', batchI18n(kind, 'partialResult', {
+                current: lastProgress.current,
+                total: lastProgress.total,
+                count: lines.length,
+            }));
+        }
     } catch (error) {
         if (ensureSettings().debug) {
             console.warn('[Private Invitation] AI batch generation failed:', error);
         }
         notify('error', generateFailedLabelFor(kind));
     } finally {
+        state.aiBatchAbortRequested = false;
+        state.aiBatchActiveKind = null;
+        state.aiBatchProgress = null;
         if (button) {
             button.disabled = false;
             button.textContent = defaultLabel;
+            if (defaultTitle) {
+                button.setAttribute('title', defaultTitle);
+            } else {
+                button.removeAttribute('title');
+            }
         }
     }
 }
@@ -3449,12 +3739,12 @@ function syncSettingsFromDom(root = document) {
     const retentionAiPrompt = root.querySelector('#pi_retention_ai_prompt');
     const retentionBatchCount = root.querySelector('#pi_retention_batch_count');
     const useChatContext = root.querySelector('#pi_ai_use_chat_context');
+    const stripHtmlNoiseEl = root.querySelector('#pi_strip_html_noise');
     const useWorldInfo = root.querySelector('#pi_ai_use_world_info');
     const chatFloorStart = root.querySelector('#pi_chat_floor_start');
     const chatFloorEnd = root.querySelector('#pi_chat_floor_end');
     const chatChunkSize = root.querySelector('#pi_chat_chunk_size');
-    const chatFilterTags = root.querySelector('#pi_chat_filter_tags');
-    const chatExcludeTags = root.querySelector('#pi_chat_exclude_tags');
+    const chatBatchDelay = root.querySelector('#pi_chat_batch_delay');
     const worldEntryLimit = root.querySelector('#pi_world_entry_limit');
     const copyCharacter = root.querySelector('#pi_copy_character');
     const presentationMode = root.querySelector('#pi_presentation_mode');
@@ -3559,6 +3849,9 @@ function syncSettingsFromDom(root = document) {
     if (useChatContext) {
         settings.aiUseChatContext = useChatContext.checked;
     }
+    if (stripHtmlNoiseEl) {
+        settings.stripHtmlNoise = stripHtmlNoiseEl.checked;
+    }
     if (useWorldInfo) {
         settings.aiUseWorldInfo = useWorldInfo.checked;
     }
@@ -3574,11 +3867,9 @@ function syncSettingsFromDom(root = document) {
         settings.chatChunkSize = clampNumber(chatChunkSize.value, 1, 500, defaultSettings.chatChunkSize);
         chatChunkSize.value = String(settings.chatChunkSize);
     }
-    if (chatFilterTags) {
-        settings.chatFilterTags = String(chatFilterTags.value || '');
-    }
-    if (chatExcludeTags) {
-        settings.chatExcludeTags = String(chatExcludeTags.value || '');
+    if (chatBatchDelay) {
+        settings.chatBatchDelayMs = clampNumber(chatBatchDelay.value, 0, 5000, defaultSettings.chatBatchDelayMs);
+        chatBatchDelay.value = String(settings.chatBatchDelayMs);
     }
     if (worldEntryLimit) {
         settings.worldEntryLimit = clampNumber(worldEntryLimit.value, 1, 300, defaultSettings.worldEntryLimit);
@@ -3727,12 +4018,12 @@ function persistDialogueEditor(root = document) {
     const retentionAiPrompt = root.querySelector('#pi_retention_ai_prompt');
     const retentionBatchCount = root.querySelector('#pi_retention_batch_count');
     const useChatContext = root.querySelector('#pi_ai_use_chat_context');
+    const stripHtmlNoiseEl = root.querySelector('#pi_strip_html_noise');
     const useWorldInfo = root.querySelector('#pi_ai_use_world_info');
     const chatFloorStart = root.querySelector('#pi_chat_floor_start');
     const chatFloorEnd = root.querySelector('#pi_chat_floor_end');
     const chatChunkSize = root.querySelector('#pi_chat_chunk_size');
-    const chatFilterTags = root.querySelector('#pi_chat_filter_tags');
-    const chatExcludeTags = root.querySelector('#pi_chat_exclude_tags');
+    const chatBatchDelay = root.querySelector('#pi_chat_batch_delay');
     const worldEntryLimit = root.querySelector('#pi_world_entry_limit');
     const presentationMode = root.querySelector('#pi_presentation_mode');
     const coverEffect = root.querySelector('#pi_cover_effect');
@@ -3817,6 +4108,9 @@ function persistDialogueEditor(root = document) {
     if (useChatContext) {
         settings.aiUseChatContext = useChatContext.checked;
     }
+    if (stripHtmlNoiseEl) {
+        settings.stripHtmlNoise = stripHtmlNoiseEl.checked;
+    }
     if (useWorldInfo) {
         settings.aiUseWorldInfo = useWorldInfo.checked;
     }
@@ -3829,11 +4123,8 @@ function persistDialogueEditor(root = document) {
     if (chatChunkSize) {
         settings.chatChunkSize = clampNumber(chatChunkSize.value, 1, 500, defaultSettings.chatChunkSize);
     }
-    if (chatFilterTags) {
-        settings.chatFilterTags = String(chatFilterTags.value || '');
-    }
-    if (chatExcludeTags) {
-        settings.chatExcludeTags = String(chatExcludeTags.value || '');
+    if (chatBatchDelay) {
+        settings.chatBatchDelayMs = clampNumber(chatBatchDelay.value, 0, 5000, defaultSettings.chatBatchDelayMs);
     }
     if (worldEntryLimit) {
         settings.worldEntryLimit = clampNumber(worldEntryLimit.value, 1, 300, defaultSettings.worldEntryLimit);
@@ -3932,12 +4223,12 @@ function syncDomFromSettings(root = document) {
     const retentionAiPrompt = root.querySelector('#pi_retention_ai_prompt');
     const retentionBatchCount = root.querySelector('#pi_retention_batch_count');
     const useChatContext = root.querySelector('#pi_ai_use_chat_context');
+    const stripHtmlNoiseEl = root.querySelector('#pi_strip_html_noise');
     const useWorldInfo = root.querySelector('#pi_ai_use_world_info');
     const chatFloorStart = root.querySelector('#pi_chat_floor_start');
     const chatFloorEnd = root.querySelector('#pi_chat_floor_end');
     const chatChunkSize = root.querySelector('#pi_chat_chunk_size');
-    const chatFilterTags = root.querySelector('#pi_chat_filter_tags');
-    const chatExcludeTags = root.querySelector('#pi_chat_exclude_tags');
+    const chatBatchDelay = root.querySelector('#pi_chat_batch_delay');
     const worldEntryLimit = root.querySelector('#pi_world_entry_limit');
     const copyCharacter = root.querySelector('#pi_copy_character');
     const presentationMode = root.querySelector('#pi_presentation_mode');
@@ -4024,6 +4315,9 @@ function syncDomFromSettings(root = document) {
     if (useChatContext) {
         useChatContext.checked = settings.aiUseChatContext;
     }
+    if (stripHtmlNoiseEl) {
+        stripHtmlNoiseEl.checked = settings.stripHtmlNoise;
+    }
     if (useWorldInfo) {
         useWorldInfo.checked = settings.aiUseWorldInfo;
     }
@@ -4036,12 +4330,11 @@ function syncDomFromSettings(root = document) {
     if (chatChunkSize) {
         chatChunkSize.value = String(settings.chatChunkSize);
     }
-    if (chatFilterTags) {
-        chatFilterTags.value = settings.chatFilterTags || '';
+    if (chatBatchDelay) {
+        chatBatchDelay.value = String(settings.chatBatchDelayMs);
     }
-    if (chatExcludeTags) {
-        chatExcludeTags.value = settings.chatExcludeTags || '';
-    }
+    renderTagChips(root, 'filter');
+    renderTagChips(root, 'exclude');
     if (worldEntryLimit) {
         worldEntryLimit.value = String(settings.worldEntryLimit);
     }
@@ -5300,6 +5593,9 @@ function bindConsoleEvents(root) {
     root.querySelectorAll('.pi-tab').forEach((button) => {
         button.addEventListener('click', () => setActiveTab(button.dataset.piTab, root));
     });
+
+    bindTagChipPool(root, 'filter');
+    bindTagChipPool(root, 'exclude');
 
     const closeButton = root.querySelector('#pi_close');
     if (closeButton) {

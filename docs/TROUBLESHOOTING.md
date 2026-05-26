@@ -93,15 +93,48 @@ For local APIs, prefer binding the API server to an address reachable from the S
 
 ## Chat Context Looks Too Short
 
-The token estimate reflects the chunk that will actually be sent, not the entire chat file.
+The token estimate reflects the chunk that will actually be sent in **one** AI call, not the entire chat file or the merged auto-batch payload.
 
-The effective range is:
+The plugin auto-batches across the full range:
 
 - Start at `chatFloorStart`.
 - Stop at `chatFloorEnd`.
-- Never include more than `chatChunkSize` messages in one generation request.
+- Send `chatChunkSize` messages per AI call.
+- Merge all batches' drafts into the pool.
 
-For example, if the chat has 80 messages but chunk size is 40, the estimate only covers up to 40 messages.
+For example, with 80 floors, `chatFloorStart=0`, `chatFloorEnd=80`, `chatChunkSize=20`: four AI calls run sequentially (0–19, 20–39, 40–59, 60–79). The token estimate only describes one batch's payload — that is intentional.
+
+If you want a single AI call covering more floors at once, raise `chatChunkSize`. If you want to constrain the total work, lower `chatFloorEnd` so fewer batches are needed.
+
+## How To Exclude A Specific HTML Block From AI Context
+
+The exclude chip pool removes `<tag>...</tag>` paired content. The matcher accepts attributes — entering `div` in the chip pool strips:
+
+- `<div>...</div>`
+- `<div class="x">...</div>`
+- `<div  data-y="1" >...</div>`
+
+without you needing to specify the attribute pattern.
+
+Tags that are not paired need a different mechanism:
+
+- HTML comments (`<!-- ... -->`) — handled by the **Strip HTML comments and img tags** switch on the AI tab. The switch is on by default and covers `<!-- ... -->`, `<img>`, `<br>`, `<hr>`, `<meta>`, `<input>`, `<source>`, `<track>`, `<wbr>`, `<area>`, `<base>`, `<col>`, `<embed>`, `<link>`, `<param>`.
+- Self-closing tags from the same list (e.g. images, line breaks) — same switch.
+- Tags that should be **kept** but only their content matters — use the **filter** chip pool (green chips) instead; that pool extracts only the wrapped content and discards everything else.
+
+Word-boundary check prevents accidental over-matching: entering `div` will not strip `<diva>...</diva>` or `<divider>...</divider>` because the regex requires the tag name to be followed by whitespace or `>`, never by another letter.
+
+Known limitation: nested same-name tags (`<div><div>inner</div></div>`) only match the first inner closing tag, leaving the outer remainder. Chat floors rarely contain this nesting and the limitation is not patched.
+
+## AI Batch Generation Got Stuck
+
+If a batch run does not finish:
+
+1. Click the AI generate button again. While generation is in flight the button shows `✕ Cancel ({current}/{total})`. Clicking it sets the abort flag and stops the loop after the current batch completes.
+2. If the very first AI call hangs (no progress indicator advances), the underlying API call is stuck. Cancel via the same button; if that also hangs, refresh SillyTavern. The plugin clears all batch state in the `finally` block of every run, so a fresh page load always returns to a clean idle state.
+3. Inspect the SillyTavern server logs if independent API mode is used.
+
+Already-completed batches are appended to the draft pool even when cancelled or aborted by error, so progress is never lost.
 
 ## Hidden Messages Are Included
 

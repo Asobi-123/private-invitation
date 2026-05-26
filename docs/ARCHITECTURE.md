@@ -95,6 +95,81 @@ The configured OpenAI-compatible endpoint is passed through `reverse_proxy` and 
 
 The extension fetches its own locale JSON files. It does not depend on SillyTavern's translation namespace.
 
+### AI batch generation pipeline
+
+AI draft generation is the most layered part of the app core. The relevant call chain:
+
+```text
+handleGenerateAiBatch(root, kind)
+  ├─ if state.aiBatchActiveKind === kind && !aiBatchAbortRequested
+  │     → set aiBatchAbortRequested, morph button to "Cancelling…", return
+  ├─ reset abort flag, mark aiBatchActiveKind, morph button to cancel form
+  └─ generateAiMessages(characterInfo, kind, { onProgress, shouldAbort })
+        ├─ if !aiUseChatContext → runSingleGenerate(_, kind, '')         (0-batch fallback)
+        ├─ collectChatContextSources(characterInfo)                       (read each source once)
+        │     ├─ getContext()?.chat (no selected files)
+        │     └─ fetchChatFileMessages(characterInfo, fileName)
+        ├─ computeBatchRanges(settings)                                   (start..end in chunkSize steps)
+        ├─ ranges.length === 0 → runSingleGenerate(_, kind, '')
+        ├─ ranges.length === 1 → runSingleGenerate(_, kind, contextForOnlyRange)
+        └─ ranges.length >= 2  → loop:
+              ├─ if shouldAbort() break
+              ├─ chatContext = renderSourcesForRange(sources, settings, range)
+              │     └─ sliceChatMessages(messages, settings, range)
+              │           └─ formatChatMessage(message, idx, filterTags, excludeTags, stripHtml)
+              │                 └─ stripHtmlNoise(text) if stripHtml is true
+              ├─ runSingleGenerate(characterInfo, kind, chatContext)
+              │     ├─ buildCharacterPersonaContext
+              │     ├─ buildWorldInfoContext
+              │     ├─ getPromptPresetText / applyTemplate
+              │     ├─ routeGenerate({ prompt, responseLength, trimNames })
+              │     └─ parseGeneratedLines(reply).slice(0, batchCount)
+              ├─ collected.push(...lines)
+              ├─ onProgress({ current, total, phase: 'done' }) → info toast
+              └─ if next batch && chatBatchDelayMs > 0 → await sleep(chatBatchDelayMs)
+  └─ finally: clear abort flag, clear aiBatchActiveKind, restore button label / title
+```
+
+Key invariants:
+
+- `runSingleGenerate` is the only path that calls `routeGenerate`. It is parameterized purely by `characterInfo`, `kind`, and `chatContext`.
+- `collectChatContextSources` runs once per batch run, not per batch. Sources (current chat array or fetched chat files) are reused across batches.
+- `renderSourcesForRange` re-slices the same source arrays per batch using `sliceChatMessages`'s `{rangeStart, rangeEnd}` override.
+- `formatChatMessage` performs HTML-noise stripping (`stripHtmlNoise`) before exclude-tag stripping (`stripTaggedContent`) before include-tag extraction (`extractTaggedContent`). This order matters: pre-stripping HTML removes nodes that could otherwise interfere with tag matching.
+- Anger-mode prompt assembly reuses the same pipeline through `aiPromptFieldFor / instructionKeyFor / rulesKeyFor / batchCountFieldFor / promptBodyFieldFor / presetFieldFor` helpers — there is no separate anger generation function.
+
+### Tag matching regex contract
+
+`extractTaggedContent(text, tags)` and `stripTaggedContent(text, tags)` both build per-tag regexes of the shape:
+
+```js
+new RegExp(`<\\s*${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\s*/\\s*${tag}\\s*>`, 'gi')
+```
+
+Matches:
+
+- `<tag>...</tag>`
+- `<tag attr="x">...</tag>`, `<tag  data-y="1" >...</tag>`, multi-line attribute lists
+
+Does not match:
+
+- `<taga>...</taga>` (word-boundary protection — `tag` is followed by either whitespace or `>`, never by an additional letter)
+- Self-closing elements (`<img>`, `<br>`, etc.) — these are handled by `stripHtmlNoise` instead
+- HTML comments (`<!-- ... -->`) — also `stripHtmlNoise`
+
+Known limitation: nested same-name tags (`<div><div>inner</div></div>`) match only the first `</div>`. Chat floors rarely contain this; the limitation is documented but not patched.
+
+### Console event binding
+
+`bindConsoleEvents(root)` is called exactly once at extension init. It owns event listeners that should not be re-bound when settings change:
+
+- Tab switching
+- Filter / exclude chip pool input listeners (Enter / comma / paste / × delete / backspace)
+- Number-pair sync between sliders and number inputs
+- Close button, retention chance pair, color pickers, etc.
+
+`syncDomFromSettings(root)` and `syncSettingsFromDom(root)` move state between the persisted `settings` object and the rendered DOM; they do not bind listeners. Re-rendering or re-opening the console should call sync, not bind.
+
 ## Compatibility Notes
 
 The extension must work under localhost, HTTP, HTTPS, and pure IP VPS access. Runtime code avoids secure-context-only browser APIs such as `crypto.subtle`.

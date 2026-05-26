@@ -1369,6 +1369,44 @@
     color: #fff;
 }
 
+.pi-tag-chip-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--pi-border) 50%, transparent);
+    background: color-mix(in srgb, var(--pi-field) 60%, transparent);
+    min-height: 38px;
+    cursor: text;
+}
+
+.pi-tag-chip-pool__input {
+    flex: 1 1 120px;
+    min-width: 80px;
+    border: 0;
+    background: transparent;
+    color: var(--pi-text);
+    font-size: 13px;
+    padding: 2px 4px;
+    outline: none;
+}
+
+.pi-tag-chip-pool__input::placeholder {
+    color: var(--pi-dim);
+}
+
+.pi-chip--filter {
+    background: color-mix(in srgb, #22c55e 18%, var(--pi-field));
+    border-color: color-mix(in srgb, #22c55e 40%, var(--pi-border));
+}
+
+.pi-chip--exclude {
+    background: color-mix(in srgb, #ef4444 18%, var(--pi-field));
+    border-color: color-mix(in srgb, #ef4444 40%, var(--pi-border));
+}
+
 .pi-pool-empty {
     padding: 10px 12px;
     color: var(--pi-dim);

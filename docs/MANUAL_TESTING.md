@@ -103,17 +103,44 @@ Steps:
 1. Enable chat context.
 2. Select a historical chat file.
 3. Set start floor, end floor, and chunk size.
-4. Add include-tag filters.
-5. Add exclude-tag filters.
-6. Generate drafts.
+4. Add include-tag filters (filter chip pool).
+5. Add exclude-tag filters (exclude chip pool).
+6. Toggle the "Strip HTML comments and img tags" switch.
+7. Generate drafts.
 
 Expected:
 
 - Floor labels are visible.
+- Filter chips render green; exclude chips render red.
+- Enter / comma / semicolon (zh + en) commits a chip; backspace on empty input removes the trailing chip; paste with separators splits into multiple chips.
 - Token estimate reflects the actual chunk, not the entire chat file.
-- Include filters keep only matching tag contents.
-- Exclude filters remove matching tag contents first.
+- Include filters keep only matching tag contents; tags with attributes (`<div class="x">…</div>`) match when only the tag name is provided.
+- Exclude filters remove matching tag contents first; attribute-bearing tags are also removed.
+- With the strip switch on, HTML comments (`<!-- ... -->`) and self-closing elements (`<img>`, `<br>`, `<hr>`, etc.) are removed before tag filtering.
 - Hidden messages are still eligible for context.
+
+## 6.1 Auto-Batch Generation
+
+Steps:
+
+1. Set up a chat with significantly more floors than `chatChunkSize` (e.g. 80+ floors, chunk size 20).
+2. Set start floor = 0, end floor = 80, batch delay = 500ms.
+3. Generate drafts in the dialogue / retention / anger scope.
+4. While generation is running, observe the button label.
+5. Mid-run, click the button to cancel.
+6. After the run, inspect the draft pool count.
+7. Repeat with `aiUseChatContext` disabled.
+
+Expected:
+
+- The button morphs from "AI generate drafts" to "✕ Cancel (1/4)" → "✕ Cancel (2/4)" → … as batches progress.
+- The button tooltip explains that completed batches are kept on cancel.
+- An info toast fires after each batch completes ("Batch X/Y done").
+- Clicking the button mid-run changes the label to "Cancelling… (X/Y)" and disables further clicks; the current batch finishes, then the loop stops.
+- A warning toast reports "Completed X/Y batches; N drafts added" after cancellation.
+- Already-generated drafts from completed batches are present in the pool.
+- With `aiUseChatContext` disabled, only one AI call is made and no progress label appears (0-batch fallback).
+- The `chatBatchDelayMs` value adds a visible delay between batches (test with 2000ms to confirm). Setting it to 0 produces back-to-back calls.
 
 ## 7. World Info Context
 
