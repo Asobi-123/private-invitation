@@ -156,6 +156,56 @@
                         <div id="pi_retention_pool_list" class="pi-chip-list"></div>
                     </div>
                 </details>
+
+                <!-- 生气文案池 -->
+                <details class="pi-card pi-card--foldable">
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.angerPoolTitle">生气文案池</strong>
+                        <span class="pi-muted" data-i18n="console.copy.angerPoolNote">连续被拒达到阈值后，主页直接弹生气文案，倒计时后强制进入聊天，无法拒绝。</span>
+                    </summary>
+                    <div class="pi-field pi-anger-stats">
+                        <span class="pi-muted" data-i18n="console.anger.currentCountLabel">当前累计拒绝次数</span>
+                        <strong id="pi_anger_current_count" class="pi-anger-stats-value">0</strong>
+                        <button id="pi_anger_reset_count" type="button" class="menu_button" data-i18n="console.anger.resetCountButton">手动归零</button>
+                        <button id="pi_anger_test" type="button" class="menu_button" data-i18n="console.anger.testButton">手动测试生气邀约</button>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_anger_threshold" data-i18n="console.anger.threshold">触发阈值（累计拒绝多少次）</label>
+                        <input id="pi_anger_threshold" type="number" min="2" max="50" step="1" class="text_pole pi-number">
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_anger_countdown_seconds" data-i18n="console.anger.countdownSeconds">倒计时秒数（强制进入前给用户看文案的时间）</label>
+                        <input id="pi_anger_countdown_seconds" type="number" min="3" max="20" step="1" class="text_pole pi-number">
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_anger_intensity" data-i18n="console.anger.intensity">生气强度（影响 AI 生成时的情绪外显度）</label>
+                        <select id="pi_anger_intensity" class="text_pole">
+                            <option value="restrained" data-i18n="console.anger.intensity.restrained">克制内敛（推荐冷淡型角色）</option>
+                            <option value="direct" data-i18n="console.anger.intensity.direct">直接刀子（允许外显情绪词）</option>
+                            <option value="outburst" data-i18n="console.anger.intensity.outburst">临界爆发（话语刀气更重，可命令警告）</option>
+                        </select>
+                    </div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_anger_reset_on_accept" type="checkbox">
+                            <span data-i18n="console.anger.resetOnAccept">接受邀约时自动归零累计</span>
+                        </label>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_anger_accent_color" data-i18n="console.anger.accentColor">生气模式主色（影响边框、装饰、倒计时颜色）</label>
+                        <input id="pi_anger_accent_color" type="color" class="pi-color">
+                    </div>
+                    <div id="pi_anger_count" class="pi-muted"></div>
+                    <div class="pi-field">
+                        <div class="pi-pool-add-row">
+                            <input id="pi_anger_pool_input" type="text" class="text_pole" data-i18n-placeholder="console.anger.poolInputPlaceholder" placeholder="输入一条生气文案，回车或按按钮添加">
+                            <button id="pi_anger_pool_add" type="button" class="menu_button" data-i18n="console.anger.poolAdd">添加</button>
+                        </div>
+                        <input id="pi_anger_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.anger.poolSearch" placeholder="在生气池中搜索">
+                        <small class="pi-muted" data-i18n="console.anger.poolNote">达到阈值后弹这些文案。倒计时结束自动进入聊天，无法关闭。点 chip 文字可编辑，× 单独删除。</small>
+                        <div id="pi_anger_pool_list" class="pi-chip-list"></div>
+                    </div>
+                </details>
             </section>
 
             <!-- Tab 3: AI 生成 -->
@@ -218,6 +268,7 @@
                 <div class="pi-scope-tabs" data-pi-scope-host="ai">
                     <button type="button" class="pi-scope-tab active" data-pi-scope="dialogue" data-pi-scope-host="ai" data-i18n="console.scope.dialogue">主邀约</button>
                     <button type="button" class="pi-scope-tab" data-pi-scope="retention" data-pi-scope-host="ai" data-i18n="console.scope.retention">挽留</button>
+                    <button type="button" class="pi-scope-tab" data-pi-scope="anger" data-pi-scope-host="ai" data-i18n="console.scope.anger">生气</button>
                 </div>
 
                 <!-- 主邀约 AI scope -->
@@ -389,6 +440,60 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 生气 AI scope -->
+                <div class="pi-scope-pane" data-pi-scope-pane="anger" data-pi-scope-host="ai" hidden>
+                    <div class="pi-card">
+                        <div class="pi-card-head">
+                            <strong data-i18n="console.ai.angerTitle">生气 AI 生成</strong>
+                            <span class="pi-muted" data-i18n="console.ai.angerCharHint">为顶部「当前角色」批量写生气文案。上下文沿用主邀约的聊天 / 世界书设置。</span>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_anger_prompt_preset" data-i18n="console.anger.promptPreset">生气生成类型</label>
+                            <select id="pi_anger_prompt_preset" class="text_pole">
+                                <optgroup id="pi_anger_prompt_builtin_group" data-i18n="[label]console.anger.promptBuiltinGroup" label="内置预设">
+                                    <option value="coldBack" data-i18n="console.anger.promptPreset.coldBack">冷淡背身</option>
+                                    <option value="monoReply" data-i18n="console.anger.promptPreset.monoReply">单字回应</option>
+                                    <option value="soreSpot" data-i18n="console.anger.promptPreset.soreSpot">痛点回扣</option>
+                                    <option value="mockDistance" data-i18n="console.anger.promptPreset.mockDistance">嘲讽距离</option>
+                                    <option value="silentExit" data-i18n="console.anger.promptPreset.silentExit">彻底沉默</option>
+                                    <option value="pressuredOutburst" data-i18n="console.anger.promptPreset.pressuredOutburst">压抑爆发</option>
+                                    <option value="silentGlare" data-i18n="console.anger.promptPreset.silentGlare">无言怒视</option>
+                                    <option value="directWarning" data-i18n="console.anger.promptPreset.directWarning">直白警告</option>
+                                </optgroup>
+                                <optgroup id="pi_anger_prompt_custom_group" data-i18n="[label]console.anger.promptCustomGroup" label="我的模板"></optgroup>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_anger_prompt_body" data-i18n="console.anger.promptBody">生气提示词正文（可编辑）</label>
+                            <textarea id="pi_anger_prompt_body" class="text_pole pi-textarea" rows="6" data-i18n-placeholder="console.anger.promptBodyPlaceholder" placeholder="可直接修改生气提示词。{char} 会被替换成角色名，{count} 会被替换成生成条数。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_anger_reset_prompt" type="button" class="menu_button" data-i18n="console.anger.resetPrompt">还原内置预设</button>
+                                <button id="pi_anger_save_template" type="button" class="menu_button" data-i18n="console.anger.saveTemplate">保存为我的模板</button>
+                                <button id="pi_anger_delete_template" type="button" class="menu_button" data-i18n="console.anger.deleteTemplate">删除当前模板</button>
+                            </div>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_anger_batch_count" data-i18n="console.anger.batchCount">批量生成条数</label>
+                            <input id="pi_anger_batch_count" type="number" min="3" max="30" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_anger_ai_prompt" data-i18n="console.anger.aiPrompt">补充生成要求</label>
+                            <textarea id="pi_anger_ai_prompt" class="text_pole pi-textarea" rows="5" data-i18n-placeholder="console.anger.aiPromptPlaceholder" placeholder="补充生气的方式、克制度、想避开的表达。不要破口大骂或油腻骂街。可以用 {char} 代表角色名。"></textarea>
+                        </div>
+                        <div class="pi-actions-row">
+                            <button id="pi_anger_ai_generate_batch" type="button" class="menu_button" data-i18n="console.anger.generateBatch">AI 批量生成生气草稿</button>
+                            <button id="pi_anger_ai_append_all" type="button" class="menu_button" data-i18n="console.anger.appendAll">全部加入生气池</button>
+                            <button id="pi_anger_ai_draft_clear" type="button" class="menu_button" data-i18n="console.anger.clearDrafts">清空草稿</button>
+                        </div>
+                        <div class="pi-field">
+                            <label data-i18n="console.anger.generatedDraft">AI 生气草稿</label>
+                            <small class="pi-muted" data-i18n="console.anger.draftHint">点 + 把单条加入生气池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
+                            <span id="pi_anger_ai_draft_count" class="pi-muted"></span>
+                            <div id="pi_anger_ai_draft_list" class="pi-draft-list" role="list"></div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Tab 4: 外观（合并风格 + CSS） -->
@@ -503,6 +608,14 @@
                             <input id="pi_barrage_duration_value" type="number" min="6" max="60" step="1" class="text_pole pi-number">
                         </div>
                         <small class="pi-muted" data-i18n="console.style.barrageDurationNote">数字越大飘得越慢，长文案推荐 30s 以上。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_barrage_line_count" data-i18n="console.style.barrageLineCount">弹幕条数（仅弹幕模式）</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_barrage_line_count" type="range" min="2" max="8" step="1">
+                            <input id="pi_barrage_line_count_value" type="number" min="2" max="8" step="1" class="text_pole pi-number">
+                        </div>
+                        <small class="pi-muted" data-i18n="console.style.barrageLineCountNote">弹幕字号会随条数自动微调，最多 8 条。</small>
                     </div>
 
                     <div class="pi-section-title" data-i18n="console.appearance.colorSection">颜色与文字</div>

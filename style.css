@@ -1625,6 +1625,7 @@
     padding: 4px 14px;
     border-radius: 6px;
     background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.18) 18%, rgba(0, 0, 0, 0.18) 82%, transparent);
+    font-size: calc(var(--pi-preview-font-size, 24px) * (1 - (var(--pi-barrage-count, 3) - 3) * 0.06));
     animation: pi-barrage var(--pi-barrage-duration, 22s) linear infinite;
     animation-delay: calc(var(--pi-barrage-index, 0) * -5s);
 }
@@ -2083,6 +2084,7 @@
     padding: 4px 14px;
     border-radius: 6px;
     background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.18) 18%, rgba(0, 0, 0, 0.18) 82%, transparent);
+    font-size: calc(var(--pi-invite-font-size, 24px) * (1 - (var(--pi-barrage-count, 3) - 3) * 0.06));
     animation: pi-barrage var(--pi-barrage-duration, 22s) linear infinite;
     animation-delay: calc(var(--pi-barrage-index, 0) * -5s);
 }
@@ -2533,12 +2535,276 @@
     }
 }
 
-@media (max-width: 720px) {
-    .pi-overlay {
-        width: calc(100vw - 16px);
-        margin: calc(env(safe-area-inset-top, 0px) + 8px) auto calc(env(safe-area-inset-bottom, 0px) + 8px);
-        padding: 0;
+/* ===== Anger mode — red/black rage with crack frame ===== */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] {
+    --pi-anger-color: var(--pi-anger-accent, #c2415a);
+    background: #1a0000;
+    border: 2px solid #8b0000;
+    outline: 4px solid var(--pi-anger-color);
+    outline-offset: -4px;
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--pi-anger-color) 80%, #000),
+        0 0 30px 8px color-mix(in srgb, var(--pi-anger-color) 55%, transparent),
+        inset 0 0 40px color-mix(in srgb, var(--pi-anger-color) 24%, transparent),
+        0 24px 64px rgba(0, 0, 0, 0.6);
+    animation: pi-anger-card-flicker 3.5s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+@keyframes pi-anger-card-flicker {
+    0%, 44%, 50%, 100% { opacity: 1; }
+    45% { opacity: 0.85; }
+    47% { opacity: 0.6; }
+    49% { opacity: 0.95; }
+}
+
+/* Dark crimson gradient over the cover */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-cover-shade {
+    background:
+        radial-gradient(ellipse at 50% 110%, color-mix(in srgb, var(--pi-anger-color, #c2415a) 60%, transparent) 0%, transparent 65%),
+        linear-gradient(to top,
+            color-mix(in srgb, var(--pi-anger-color, #c2415a) 75%, #000) 0%,
+            color-mix(in srgb, var(--pi-anger-color, #c2415a) 35%, transparent) 45%,
+            rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Pulsing frame with crack-corner decorations */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-frame {
+    border: 2px solid color-mix(in srgb, var(--pi-anger-color, #c2415a) 70%, transparent);
+    box-shadow: inset 0 0 14px color-mix(in srgb, var(--pi-anger-color, #c2415a) 30%, transparent);
+    animation: pi-anger-frame-shake 2s ease-in-out infinite;
+}
+
+@keyframes pi-anger-frame-shake {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 14px color-mix(in srgb, var(--pi-anger-color, #c2415a) 30%, transparent),
+            0 0 18px 4px color-mix(in srgb, var(--pi-anger-color, #c2415a) 30%, transparent);
     }
+    50% {
+        box-shadow:
+            inset 0 0 22px color-mix(in srgb, var(--pi-anger-color, #c2415a) 50%, transparent),
+            0 0 32px 10px color-mix(in srgb, var(--pi-anger-color, #c2415a) 55%, transparent);
+    }
+}
+
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-frame::before,
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-frame::after {
+    content: "";
+    position: absolute;
+    width: 22%;
+    height: 22%;
+    pointer-events: none;
+}
+
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-frame::before {
+    top: 0;
+    left: 0;
+    border-top: 3px solid var(--pi-anger-color);
+    border-left: 3px solid var(--pi-anger-color);
+}
+
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-frame::after {
+    bottom: 0;
+    right: 0;
+    border-bottom: 3px solid var(--pi-anger-color);
+    border-right: 3px solid var(--pi-anger-color);
+}
+
+/* Kicker — flashing red badge */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-kicker {
+    background: color-mix(in srgb, var(--pi-anger-color, #c2415a) 78%, #000);
+    color: #ffe0e0;
+    border: 1px solid color-mix(in srgb, var(--pi-anger-color, #c2415a) 95%, transparent);
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--pi-anger-color, #c2415a) 70%, transparent);
+    animation: pi-anger-kicker-flash 2s ease-in-out infinite;
+}
+
+@keyframes pi-anger-kicker-flash {
+    0%, 100% { background-color: color-mix(in srgb, var(--pi-anger-color, #c2415a) 70%, #000); }
+    50%       { background-color: var(--pi-anger-color, #c2415a); }
+}
+
+/* Character name — rage red with hard outline */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-name {
+    color: color-mix(in srgb, var(--pi-anger-color, #c2415a) 80%, #ff6060);
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    -webkit-text-stroke: 1.5px color-mix(in srgb, var(--pi-anger-color, #c2415a) 60%, #000);
+    animation: pi-anger-name-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pi-anger-name-pulse {
+    0%, 100% {
+        text-shadow:
+            0 0 8px color-mix(in srgb, var(--pi-anger-color, #c2415a) 80%, transparent),
+            2px 2px 0 color-mix(in srgb, var(--pi-anger-color, #c2415a) 50%, #000),
+            -1px -1px 0 #000;
+    }
+    50% {
+        text-shadow:
+            0 0 20px color-mix(in srgb, var(--pi-anger-color, #c2415a) 95%, transparent),
+            3px 3px 0 color-mix(in srgb, var(--pi-anger-color, #c2415a) 40%, #000),
+            -1px -1px 0 #000;
+    }
+}
+
+/* Bubble — jagged comic anger bubble with ⚡ tail */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-message--bubble {
+    background: rgba(20, 0, 0, 0.88);
+    border: 2px solid color-mix(in srgb, var(--pi-anger-color, #c2415a) 90%, transparent);
+    border-radius: 4px 16px 4px 16px;
+    box-shadow:
+        0 0 12px color-mix(in srgb, var(--pi-anger-color, #c2415a) 55%, transparent),
+        inset 0 0 8px color-mix(in srgb, var(--pi-anger-color, #c2415a) 25%, transparent);
+    color: #ffcccc;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+}
+
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-message--bubble::after {
+    content: "⚡";
+    position: absolute;
+    top: -14px;
+    left: 8px;
+    font-size: 1rem;
+    color: color-mix(in srgb, var(--pi-anger-color, #c2415a) 90%, #ff5520);
+    pointer-events: none;
+    z-index: 4;
+}
+
+/* Banner — bottom blood gradient */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-message--banner {
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--pi-anger-color, #c2415a) 55%, #000) 0%,
+        var(--pi-anger-color, #c2415a) 50%,
+        color-mix(in srgb, var(--pi-anger-color, #c2415a) 55%, #000) 100%);
+    border-top: 2px solid color-mix(in srgb, var(--pi-anger-color, #c2415a) 90%, #ff7070);
+    color: #ffe0e0;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    box-shadow: 0 -4px 16px color-mix(in srgb, var(--pi-anger-color, #c2415a) 40%, transparent);
+}
+
+/* Barrage — each span gets a blood-red glow halo in anger mode */
+.pi-invitation-dialog--anger .pi-invitation-card[data-pi-mode="anger"] .pi-invitation-message--barrage span {
+    color: #ffcccc;
+    background: linear-gradient(90deg,
+        transparent,
+        color-mix(in srgb, var(--pi-anger-color, #c2415a) 35%, rgba(0, 0, 0, 0.4)) 18%,
+        color-mix(in srgb, var(--pi-anger-color, #c2415a) 35%, rgba(0, 0, 0, 0.4)) 82%,
+        transparent);
+    text-shadow:
+        0 0 14px color-mix(in srgb, var(--pi-anger-color, #c2415a) 80%, transparent),
+        0 2px 6px #000;
+}
+
+/* 💢 emoji decorations stay on top of the new frame work */
+.pi-anger-symbol {
+    position: absolute;
+    font-size: 56px;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 5;
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--pi-anger-color, #c2415a) 80%, transparent));
+    animation: pi-anger-bounce 1.2s ease-in-out infinite;
+    user-select: none;
+}
+
+.pi-anger-symbol--tl { top: 14px; left: 14px; animation-delay: 0s; }
+.pi-anger-symbol--tr { top: 14px; right: 14px; animation-delay: 0.3s; }
+.pi-anger-symbol--bl { bottom: 14px; left: 14px; animation-delay: 0.6s; }
+.pi-anger-symbol--br { bottom: 14px; right: 14px; animation-delay: 0.9s; }
+
+@keyframes pi-anger-bounce {
+    0%, 100% {
+        transform: scale(1) rotate(-10deg);
+        opacity: 0.92;
+    }
+    50% {
+        transform: scale(1.32) rotate(14deg);
+        opacity: 1;
+    }
+}
+
+.pi-anger-countdown {
+    margin-top: 12px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--pi-anger-color, #c2415a) 22%, rgba(20, 0, 0, 0.78));
+    color: color-mix(in srgb, var(--pi-anger-color, #c2415a) 60%, #ffd0d0);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    text-align: center;
+    border: 1px solid color-mix(in srgb, var(--pi-anger-color, #c2415a) 80%, transparent);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--pi-anger-color, #c2415a) 85%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--pi-anger-color, #c2415a) 40%, transparent);
+    z-index: 3;
+    position: relative;
+}
+
+.pi-invitation-message--anger {
+    color: #ffd6d6;
+    text-shadow:
+        0 2px 12px rgba(0, 0, 0, 0.88),
+        0 0 18px color-mix(in srgb, var(--pi-anger-color, #c2415a) 70%, transparent);
+}
+
+.pi-invitation-actions--anger {
+    justify-content: center;
+}
+
+.pi-invitation-accept--anger {
+    background: color-mix(in srgb, var(--pi-anger-color, #c2415a) 82%, #000);
+    color: #fff;
+    border: 2px solid color-mix(in srgb, var(--pi-anger-color, #c2415a) 95%, transparent);
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    box-shadow: 0 0 14px color-mix(in srgb, var(--pi-anger-color, #c2415a) 55%, transparent);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+.pi-invitation-accept--anger:hover {
+    background: var(--pi-anger-color, #c2415a);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--pi-anger-color, #c2415a) 85%, transparent);
+}
+
+/* Anger card threshold/stats row in copy tab */
+.pi-anger-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.pi-anger-stats-value {
+    font-size: 20px;
+    color: var(--pi-accent);
+    min-width: 28px;
+    text-align: center;
+}
+
+@media (max-width: 720px) {
+    .pi-anger-symbol {
+        font-size: 40px;
+    }
+    .pi-anger-symbol--tl,
+    .pi-anger-symbol--tr { top: 8px; }
+    .pi-anger-symbol--bl,
+    .pi-anger-symbol--br { bottom: 8px; }
+    .pi-anger-symbol--tl,
+    .pi-anger-symbol--bl { left: 8px; }
+    .pi-anger-symbol--tr,
+    .pi-anger-symbol--br { right: 8px; }
+}
+
+@media (max-width: 720px) {
 
     .pi-modal {
         width: 100%;

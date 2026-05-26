@@ -31,6 +31,19 @@ const retentionPromptPresetKeys = [
     'storyCliffhanger',
 ];
 
+const angerPromptPresetKeys = [
+    'coldBack',
+    'monoReply',
+    'soreSpot',
+    'mockDistance',
+    'silentExit',
+    'pressuredOutburst',
+    'silentGlare',
+    'directWarning',
+];
+
+const angerIntensityKeys = ['restrained', 'direct', 'outburst'];
+
 const homepageTriggerModes = [
     'session',
     'cooldown',
@@ -136,7 +149,11 @@ function rebuildPromptPresetOptions(selectEl, customTemplates, kind) {
     if (!selectEl) {
         return;
     }
-    const customGroup = selectEl.querySelector(kind === 'retention' ? '#pi_retention_prompt_custom_group' : '#pi_ai_prompt_custom_group');
+    let customGroupSelector;
+    if (kind === 'retention') customGroupSelector = '#pi_retention_prompt_custom_group';
+    else if (kind === 'anger') customGroupSelector = '#pi_anger_prompt_custom_group';
+    else customGroupSelector = '#pi_ai_prompt_custom_group';
+    const customGroup = selectEl.querySelector(customGroupSelector);
     if (!customGroup) {
         return;
     }
@@ -200,12 +217,27 @@ const defaultSettings = {
     bubbleOffsetY: 0,
     bubbleShape: 'pill',
     barrageDuration: 22,
+    barrageLineCount: 3,
     poolCharacterKeys: [],
     selectedCharacterKey: '',
     characterMessages: {},
     characterDrafts: {},
     retentionMessages: {},
     retentionDrafts: {},
+    angerMessages: {},
+    angerDrafts: {},
+    rejectCounts: {},
+    angerThreshold: 5,
+    angerResetOnAccept: true,
+    angerAccentColor: '#c2415a',
+    angerCountdownSeconds: 6,
+    angerIntensity: 'restrained',
+    angerPromptPreset: 'coldBack',
+    angerPromptBody: '',
+    angerCustomTemplates: {},
+    angerAiPrompt: '',
+    angerBatchCount: 8,
+    angerGeneratedText: '',
     characterChatFiles: {},
     selectedWorldNames: [],
     characterWorldNames: {},
@@ -723,6 +755,7 @@ function ensureSettings() {
     settings.bubbleOffsetY = clampNumber(settings.bubbleOffsetY, -50, 50, defaultSettings.bubbleOffsetY);
     settings.bubbleShape = bubbleShapeKeys.includes(settings.bubbleShape) ? settings.bubbleShape : defaultSettings.bubbleShape;
     settings.barrageDuration = clampNumber(settings.barrageDuration, 6, 60, defaultSettings.barrageDuration);
+    settings.barrageLineCount = clampNumber(settings.barrageLineCount, 2, 8, defaultSettings.barrageLineCount);
     settings.poolCharacterKeys = Array.isArray(settings.poolCharacterKeys)
         ? [...new Set(settings.poolCharacterKeys.map(String))]
         : [];
@@ -739,6 +772,28 @@ function ensureSettings() {
     settings.retentionDrafts = settings.retentionDrafts && typeof settings.retentionDrafts === 'object' && !Array.isArray(settings.retentionDrafts)
         ? settings.retentionDrafts
         : {};
+    settings.angerMessages = settings.angerMessages && typeof settings.angerMessages === 'object' && !Array.isArray(settings.angerMessages)
+        ? settings.angerMessages
+        : {};
+    settings.angerDrafts = settings.angerDrafts && typeof settings.angerDrafts === 'object' && !Array.isArray(settings.angerDrafts)
+        ? settings.angerDrafts
+        : {};
+    settings.rejectCounts = settings.rejectCounts && typeof settings.rejectCounts === 'object' && !Array.isArray(settings.rejectCounts)
+        ? settings.rejectCounts
+        : {};
+    settings.angerThreshold = clampNumber(settings.angerThreshold, 2, 50, defaultSettings.angerThreshold);
+    settings.angerResetOnAccept = Boolean(settings.angerResetOnAccept);
+    settings.angerAccentColor = normalizeColor(settings.angerAccentColor, defaultSettings.angerAccentColor);
+    settings.angerCountdownSeconds = clampNumber(settings.angerCountdownSeconds, 3, 20, defaultSettings.angerCountdownSeconds);
+    settings.angerIntensity = angerIntensityKeys.includes(settings.angerIntensity) ? settings.angerIntensity : defaultSettings.angerIntensity;
+    settings.angerPromptPreset = angerPromptPresetKeys.includes(settings.angerPromptPreset) || isCustomTemplateKey(settings.angerPromptPreset)
+        ? settings.angerPromptPreset
+        : defaultSettings.angerPromptPreset;
+    settings.angerPromptBody = String(settings.angerPromptBody || '');
+    settings.angerCustomTemplates = sanitizeTemplateMap(settings.angerCustomTemplates);
+    settings.angerAiPrompt = String(settings.angerAiPrompt || '');
+    settings.angerBatchCount = clampNumber(settings.angerBatchCount, 3, 30, defaultSettings.angerBatchCount);
+    settings.angerGeneratedText = String(settings.angerGeneratedText || '');
     settings.characterChatFiles = settings.characterChatFiles && typeof settings.characterChatFiles === 'object' && !Array.isArray(settings.characterChatFiles)
         ? settings.characterChatFiles
         : {};
@@ -1201,8 +1256,32 @@ function setRetentionDraftText(characterInfo, text) {
     settings.retentionGeneratedText = '';
 }
 
+function getAngerDraftText(characterInfo) {
+    const settings = ensureSettings();
+    if (!characterInfo?.key) {
+        return '';
+    }
+    return String(settings.angerDrafts[characterInfo.key] || '');
+}
+
+function setAngerDraftText(characterInfo, text) {
+    const settings = ensureSettings();
+    const value = String(text || '');
+    if (characterInfo?.key) {
+        settings.angerDrafts[characterInfo.key] = value;
+    }
+    settings.angerGeneratedText = '';
+}
+
 function getDraftLines(characterInfo, kind) {
-    const text = kind === 'retention' ? getRetentionDraftText(characterInfo) : getDialogueDraftText(characterInfo);
+    let text;
+    if (kind === 'retention') {
+        text = getRetentionDraftText(characterInfo);
+    } else if (kind === 'anger') {
+        text = getAngerDraftText(characterInfo);
+    } else {
+        text = getDialogueDraftText(characterInfo);
+    }
     return parseGeneratedLines(text);
 }
 
@@ -1210,6 +1289,8 @@ function setDraftLines(characterInfo, kind, lines) {
     const text = (lines || []).filter(Boolean).join('\n');
     if (kind === 'retention') {
         setRetentionDraftText(characterInfo, text);
+    } else if (kind === 'anger') {
+        setAngerDraftText(characterInfo, text);
     } else {
         setDialogueDraftText(characterInfo, text);
     }
@@ -1236,13 +1317,25 @@ function clearDraft(characterInfo, kind) {
     setDraftLines(characterInfo, kind, []);
 }
 
+function poolFieldFor(kind) {
+    if (kind === 'retention') return 'retentionMessages';
+    if (kind === 'anger') return 'angerMessages';
+    return 'characterMessages';
+}
+
+function draftFieldFor(kind) {
+    if (kind === 'retention') return 'retentionDrafts';
+    if (kind === 'anger') return 'angerDrafts';
+    return 'characterDrafts';
+}
+
 function getPoolLines(characterInfo, kind) {
     const settings = ensureSettings();
     if (!characterInfo?.key) {
         return [];
     }
-    const target = kind === 'retention' ? settings.retentionMessages : settings.characterMessages;
-    return parsePoolList(target[characterInfo.key] || '');
+    const target = settings[poolFieldFor(kind)];
+    return parsePoolList(target?.[characterInfo.key] || '');
 }
 
 function setPoolLines(characterInfo, kind, lines) {
@@ -1250,8 +1343,11 @@ function setPoolLines(characterInfo, kind, lines) {
     if (!characterInfo?.key) {
         return;
     }
-    const target = kind === 'retention' ? settings.retentionMessages : settings.characterMessages;
-    target[characterInfo.key] = (lines || []).map((line) => String(line || '').trim()).filter(Boolean).join('\n');
+    const field = poolFieldFor(kind);
+    if (!settings[field] || typeof settings[field] !== 'object') {
+        settings[field] = {};
+    }
+    settings[field][characterInfo.key] = (lines || []).map((line) => String(line || '').trim()).filter(Boolean).join('\n');
 }
 
 function appendPoolLines(characterInfo, kind, newLines) {
@@ -1898,6 +1994,65 @@ function renderRetentionEditor(root = state.overlay || document) {
     renderDraftList(root, 'retention');
 }
 
+function renderAngerEditor(root = state.overlay || document) {
+    const settings = ensureSettings();
+    const promptPreset = root?.querySelector?.('#pi_anger_prompt_preset');
+    const promptBody = root?.querySelector?.('#pi_anger_prompt_body');
+    const aiPrompt = root?.querySelector?.('#pi_anger_ai_prompt');
+    const batchCount = root?.querySelector?.('#pi_anger_batch_count');
+    const count = root?.querySelector?.('#pi_anger_count');
+    const poolInput = root?.querySelector?.('#pi_anger_pool_input');
+    const threshold = root?.querySelector?.('#pi_anger_threshold');
+    const countdown = root?.querySelector?.('#pi_anger_countdown_seconds');
+    const intensity = root?.querySelector?.('#pi_anger_intensity');
+    const resetOnAccept = root?.querySelector?.('#pi_anger_reset_on_accept');
+    const accentColor = root?.querySelector?.('#pi_anger_accent_color');
+    const currentCount = root?.querySelector?.('#pi_anger_current_count');
+
+    if (promptPreset) {
+        rebuildPromptPresetOptions(promptPreset, settings.angerCustomTemplates, 'anger');
+        promptPreset.value = settings.angerPromptPreset;
+    }
+    if (promptBody) {
+        promptBody.value = settings.angerPromptBody || getDefaultPromptBody(settings.angerPromptPreset, 'anger', settings.angerBatchCount);
+    }
+    if (aiPrompt) {
+        aiPrompt.value = settings.angerAiPrompt;
+    }
+    if (batchCount) {
+        batchCount.value = String(settings.angerBatchCount);
+    }
+    if (threshold) {
+        threshold.value = String(settings.angerThreshold);
+    }
+    if (countdown) {
+        countdown.value = String(settings.angerCountdownSeconds);
+    }
+    if (intensity) {
+        intensity.value = angerIntensityKeys.includes(settings.angerIntensity) ? settings.angerIntensity : defaultSettings.angerIntensity;
+    }
+    if (resetOnAccept) {
+        resetOnAccept.checked = Boolean(settings.angerResetOnAccept);
+    }
+    if (accentColor) {
+        accentColor.value = settings.angerAccentColor || defaultSettings.angerAccentColor;
+    }
+    if (poolInput) {
+        poolInput.value = '';
+    }
+    if (currentCount) {
+        const characterInfo = getSelectedCharacter();
+        currentCount.textContent = String(getRejectCount(characterInfo));
+    }
+    if (count) {
+        const characterInfo = getSelectedCharacter();
+        const lines = characterInfo ? getPoolLines(characterInfo, 'anger') : [];
+        count.textContent = t('console.anger.savedCount', { count: lines.length });
+    }
+    renderPoolList(root, 'anger');
+    renderDraftList(root, 'anger');
+}
+
 function isConsoleOpen() {
     const overlay = state.overlay || document.querySelector('#pi_overlay');
     return Boolean(overlay?.open);
@@ -1954,6 +2109,7 @@ function buildInvitationStyleVars(settings) {
         `--pi-bubble-offset-x:${settings.bubbleOffsetX ?? 0}%`,
         `--pi-bubble-offset-y:${settings.bubbleOffsetY ?? 0}%`,
         `--pi-barrage-duration:${settings.barrageDuration ?? 22}s`,
+        `--pi-barrage-count:${settings.barrageLineCount ?? 3}`,
     ].join(';');
 }
 
@@ -1971,33 +2127,64 @@ function buildPreviewStyleVars(settings) {
         `--pi-bubble-offset-x:${settings.bubbleOffsetX ?? 0}%`,
         `--pi-bubble-offset-y:${settings.bubbleOffsetY ?? 0}%`,
         `--pi-barrage-duration:${settings.barrageDuration ?? 22}s`,
+        `--pi-barrage-count:${settings.barrageLineCount ?? 3}`,
     ].join(';');
 }
 
 function buildPreviewMessageHtml(mode) {
+    const settings = ensureSettings();
+    const barrageCount = settings.barrageLineCount ?? 3;
     const lines = [
         t('console.preview.sampleText'),
         t('console.preview.sampleTextAlt1'),
         t('console.preview.sampleTextAlt2'),
         t('console.preview.sampleTextAlt3'),
         t('console.preview.sampleTextAlt4'),
+        t('console.preview.sampleText'),
+        t('console.preview.sampleTextAlt1'),
+        t('console.preview.sampleTextAlt2'),
     ];
-    const picked = mode === 'barrage' ? lines.slice(0, 3) : lines.slice(0, 1);
+    const picked = mode === 'barrage' ? lines.slice(0, barrageCount) : lines.slice(0, 1);
     return picked.map((message, index) => {
         const barrageTop = `${((index + 0.5) / picked.length) * 100}%`;
         return `<span style="--pi-barrage-index:${index}; --pi-barrage-top:${barrageTop};">${escapeHtml(message)}</span>`;
     }).join('');
 }
 
-function buildInvitationMessageHtml(characterInfo, retention = false) {
+function normalizeInvitationMode(modeOrRetention) {
+    if (modeOrRetention === true) return 'retention';
+    if (modeOrRetention === false || modeOrRetention === undefined || modeOrRetention === null) return 'primary';
+    if (typeof modeOrRetention === 'string' && ['primary', 'retention', 'anger'].includes(modeOrRetention)) {
+        return modeOrRetention;
+    }
+    return 'primary';
+}
+
+function buildInvitationMessageHtml(characterInfo, modeOrRetention = false) {
     const settings = ensureSettings();
-    const lineCount = settings.presentationMode === 'barrage' ? 3 : 1;
-    const savedMessages = retention ? getRetentionMessages(characterInfo) : getManualMessages(characterInfo);
-    const source = savedMessages.length ? savedMessages : [retention ? getFallbackRetentionMessage(characterInfo) : getFallbackMessage(characterInfo)];
+    const mode = normalizeInvitationMode(modeOrRetention);
+    const lineCount = settings.presentationMode === 'barrage' ? (settings.barrageLineCount ?? 3) : 1;
+    let savedMessages;
+    if (mode === 'anger') {
+        savedMessages = getAngerMessages(characterInfo);
+    } else if (mode === 'retention') {
+        savedMessages = getRetentionMessages(characterInfo);
+    } else {
+        savedMessages = getManualMessages(characterInfo);
+    }
+    let fallback;
+    if (mode === 'anger') {
+        fallback = getFallbackAngerMessage(characterInfo);
+    } else if (mode === 'retention') {
+        fallback = getFallbackRetentionMessage(characterInfo);
+    } else {
+        fallback = getFallbackMessage(characterInfo);
+    }
+    const source = savedMessages.length ? savedMessages : [fallback];
     const picked = getSampledLines(source, lineCount);
 
     if (!picked.length) {
-        picked.push(retention ? getFallbackRetentionMessage(characterInfo) : getFallbackMessage(characterInfo));
+        picked.push(fallback);
     }
 
     return picked.map((message, index) => {
@@ -2096,48 +2283,98 @@ function applyAdaptiveColorsToDialog(dialog, characterInfo) {
     });
 }
 
-function createInvitationDialog(characterInfo, retention = false) {
+function createInvitationDialog(characterInfo, modeOrRetention = false) {
+    const mode = normalizeInvitationMode(modeOrRetention);
+    const retention = mode === 'retention';
+    const anger = mode === 'anger';
     const settings = resolveCharacterStyle(characterInfo);
+    const globalSettings = ensureSettings();
     const dialog = document.createElement('dialog');
-    dialog.className = `pi-invitation-dialog pi-invitation-dialog--${settings.presentationMode}`;
-    dialog.style.cssText = buildInvitationStyleVars(settings);
+    dialog.className = `pi-invitation-dialog pi-invitation-dialog--${settings.presentationMode}${anger ? ' pi-invitation-dialog--anger' : ''}`;
+    let styleVars = buildInvitationStyleVars(settings);
+    if (anger) {
+        styleVars += `;--pi-anger-accent:${globalSettings.angerAccentColor || '#c2415a'}`;
+    }
+    dialog.style.cssText = styleVars;
+
+    const kickerText = anger
+        ? t('invitation.angerKicker')
+        : (retention ? t('invitation.retentionKicker') : t('invitation.kicker'));
+    const acceptText = anger
+        ? t('invitation.angerEnter')
+        : (retention ? t('invitation.acceptRetention') : t('invitation.accept'));
+
+    const angerSymbolsHtml = anger ? `
+                <span class="pi-anger-symbol pi-anger-symbol--tl" aria-hidden="true">💢</span>
+                <span class="pi-anger-symbol pi-anger-symbol--tr" aria-hidden="true">💢</span>
+                <span class="pi-anger-symbol pi-anger-symbol--bl" aria-hidden="true">💢</span>
+                <span class="pi-anger-symbol pi-anger-symbol--br" aria-hidden="true">💢</span>` : '';
+
+    const dismissButtonsHtml = anger ? '' : `
+                <button type="button" class="pi-invitation-x" data-pi-action="dismiss" aria-label="${escapeHtml(t('invitation.dismiss'))}">×</button>`;
+
+    const countdownSeconds = anger
+        ? clampNumber(globalSettings.angerCountdownSeconds, 3, 20, defaultSettings.angerCountdownSeconds)
+        : 0;
+    const countdownHtml = anger ? `
+                    <div class="pi-anger-countdown" data-pi-anger-countdown>
+                        <span class="pi-anger-countdown-text">${escapeHtml(t('invitation.angerCountdown', { seconds: countdownSeconds }))}</span>
+                    </div>` : '';
+
+    const actionsHtml = anger ? `
+                <div class="pi-invitation-actions pi-invitation-actions--anger">
+                    <button type="button" class="menu_button pi-invitation-accept pi-invitation-accept--anger" data-pi-action="accept">${escapeHtml(acceptText)}</button>
+                </div>` : `
+                <div class="pi-invitation-actions">
+                    <button type="button" class="menu_button pi-invitation-accept" data-pi-action="accept">${escapeHtml(acceptText)}</button>
+                    <button type="button" class="menu_button pi-invitation-dismiss" data-pi-action="dismiss">${escapeHtml(retention ? t('invitation.dismissFinal') : t('invitation.dismiss'))}</button>
+                </div>`;
+
     dialog.innerHTML = `
-        <div class="pi-invitation-card" data-pi-cover-effect="${escapeHtml(settings.coverEffect || 'breath')}" data-pi-cover-fit="${escapeHtml(settings.coverFit || 'contain')}" data-pi-bubble-position="${escapeHtml(settings.bubblePosition || 'top-right')}" data-pi-bubble-shape="${escapeHtml(settings.bubbleShape || 'pill')}">
+        <div class="pi-invitation-card" data-pi-mode="${escapeHtml(mode)}" data-pi-cover-effect="${escapeHtml(settings.coverEffect || 'breath')}" data-pi-cover-fit="${escapeHtml(settings.coverFit || 'contain')}" data-pi-bubble-position="${escapeHtml(settings.bubblePosition || 'top-right')}" data-pi-bubble-shape="${escapeHtml(settings.bubbleShape || 'pill')}">
             <img class="pi-invitation-cover-backdrop" src="${escapeHtml(getCharacterAvatarUrl(characterInfo))}" alt="" aria-hidden="true">
             <img class="pi-invitation-cover" src="${escapeHtml(getCharacterAvatarUrl(characterInfo))}" alt="">
             <div class="pi-invitation-cover-shade"></div>
-            <div class="pi-invitation-frame" aria-hidden="true"></div>
-            <button type="button" class="pi-invitation-x" data-pi-action="dismiss" aria-label="${escapeHtml(t('invitation.dismiss'))}">×</button>
+            <div class="pi-invitation-frame" aria-hidden="true"></div>${angerSymbolsHtml}${dismissButtonsHtml}
             <div class="pi-invitation-content">
-                <div class="pi-invitation-kicker">${escapeHtml(retention ? t('invitation.retentionKicker') : t('invitation.kicker'))}</div>
+                <div class="pi-invitation-kicker">${escapeHtml(kickerText)}</div>
                 <div class="pi-invitation-name">${escapeHtml(characterInfo.name)}</div>
-                <div class="pi-invitation-message pi-invitation-message--${settings.presentationMode}">
-                    ${buildInvitationMessageHtml(characterInfo, retention)}
-                </div>
-                <div class="pi-invitation-actions">
-                    <button type="button" class="menu_button pi-invitation-accept" data-pi-action="accept">${escapeHtml(retention ? t('invitation.acceptRetention') : t('invitation.accept'))}</button>
-                    <button type="button" class="menu_button pi-invitation-dismiss" data-pi-action="dismiss">${escapeHtml(retention ? t('invitation.dismissFinal') : t('invitation.dismiss'))}</button>
-                </div>
+                <div class="pi-invitation-message pi-invitation-message--${settings.presentationMode}${anger ? ' pi-invitation-message--anger' : ''}">
+                    ${buildInvitationMessageHtml(characterInfo, mode)}
+                </div>${countdownHtml}${actionsHtml}
             </div>
         </div>
     `;
 
     dialog.addEventListener('click', (event) => {
         if (event.target === dialog) {
+            if (anger) {
+                return;
+            }
             handleInvitationDismiss(characterInfo, retention);
             return;
         }
 
         const action = event.target?.closest?.('[data-pi-action]')?.dataset?.piAction;
         if (action === 'accept') {
-            acceptInvitation(characterInfo);
-        } else if (action === 'dismiss') {
+            acceptInvitation(characterInfo, mode);
+        } else if (action === 'dismiss' && !anger) {
             handleInvitationDismiss(characterInfo, retention);
         }
     });
 
     dialog.addEventListener('cancel', (event) => {
         event.preventDefault();
+        if (anger) {
+            if (state.invitationFromConsoleTest) {
+                state.invitationFromConsoleTest = false;
+                stopAngerCountdown(dialog);
+                closeActiveInvitation();
+                notify('success', t('invitation.angerTestDone'));
+                openConsole(state.activeTab || 'copy');
+            }
+            return;
+        }
         handleInvitationDismiss(characterInfo, retention);
     });
 
@@ -2145,24 +2382,30 @@ function createInvitationDialog(characterInfo, retention = false) {
         if (state.activeInvitation === dialog) {
             state.activeInvitation = null;
         }
+        stopAngerCountdown(dialog);
         setTimeout(() => dialog.remove(), 0);
     });
+
+    if (anger) {
+        startAngerCountdown(dialog, characterInfo, countdownSeconds);
+    }
 
     return dialog;
 }
 
-async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()), retention = false, options = {}) {
+async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()), modeOrRetention = false, options = {}) {
     const settings = ensureSettings();
     if (!settings.enabled || !characterInfo) {
         return false;
     }
+    const mode = normalizeInvitationMode(modeOrRetention);
 
     closeActiveInvitation();
     await preloadImage(getCharacterAvatarUrl(characterInfo));
     if (typeof options.shouldShow === 'function' && !options.shouldShow()) {
         return false;
     }
-    const dialog = createInvitationDialog(characterInfo, retention);
+    const dialog = createInvitationDialog(characterInfo, mode);
     document.body.append(dialog);
     state.activeInvitation = dialog;
     applyAdaptiveColorsToDialog(dialog, characterInfo);
@@ -2180,24 +2423,85 @@ async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()
     return true;
 }
 
-async function acceptInvitation(characterInfo) {
+async function acceptInvitation(characterInfo, modeOrRetention = 'primary') {
+    if (state.invitationFromConsoleTest) {
+        state.invitationFromConsoleTest = false;
+        stopAngerCountdown(state.activeInvitation);
+        closeActiveInvitation();
+        notify('success', t('invitation.angerTestDone'));
+        openConsole(state.activeTab || 'copy');
+        return false;
+    }
     if (!isSillyTavernReadyForChatSwitch()) {
         notify('warning', t('invitation.notReady'));
-        return;
+        return false;
     }
+    const mode = normalizeInvitationMode(modeOrRetention);
+    const settings = ensureSettings();
     state.invitationFromConsoleTest = false;
     state.shownThisRound.clear();
     state.continueCount = 0;
     closeActiveInvitation();
+    if (mode === 'anger' || settings.angerResetOnAccept) {
+        setRejectCount(characterInfo, 0);
+    }
     await selectCharacterById(Number(characterInfo.id), { switchMenu: true });
     setTimeout(() => printCharactersDebounced?.(), 250);
+    return true;
+}
+
+function startAngerCountdown(dialog, characterInfo, seconds) {
+    let remaining = seconds;
+    let waitingForReady = false;
+    const el = dialog.querySelector('[data-pi-anger-countdown]');
+    const update = () => {
+        if (!el) return;
+        if (waitingForReady) {
+            el.innerHTML = `<span class="pi-anger-countdown-text">${escapeHtml(t('invitation.angerWaiting'))}</span>`;
+        } else {
+            el.innerHTML = `<span class="pi-anger-countdown-text">${escapeHtml(t('invitation.angerCountdown', { seconds: Math.max(0, remaining) }))}</span>`;
+        }
+    };
+    update();
+    const tick = async () => {
+        if (!dialog.isConnected) {
+            stopAngerCountdown(dialog);
+            return;
+        }
+        if (remaining > 0) {
+            remaining -= 1;
+            update();
+            return;
+        }
+        if (!isSillyTavernReadyForChatSwitch()) {
+            if (!waitingForReady) {
+                waitingForReady = true;
+                update();
+            }
+            return;
+        }
+        stopAngerCountdown(dialog);
+        await acceptInvitation(characterInfo, 'anger');
+    };
+    dialog._piAngerTimer = setInterval(tick, 1000);
+}
+
+function stopAngerCountdown(dialog) {
+    if (dialog?._piAngerTimer) {
+        clearInterval(dialog._piAngerTimer);
+        dialog._piAngerTimer = null;
+    }
 }
 
 function handleInvitationDismiss(characterInfo, retention = false) {
     const settings = ensureSettings();
     if (!retention && Math.random() * 100 < settings.retentionChance) {
-        showInvitation(characterInfo, true);
+        showInvitation(characterInfo, 'retention');
         return;
+    }
+
+    if (!state.invitationFromConsoleTest) {
+        incrementRejectCount(characterInfo);
     }
 
     if (characterInfo?.key) {
@@ -2346,8 +2650,17 @@ function maybeShowHomepageInvitation(force = false) {
     clearHomepageRetryTimer();
     state.homepageInvitePending = false;
     state.homepageInviteLoading = true;
-    const characterInfo = pickRandom(pool);
-    showInvitation(characterInfo, false, {
+    const angerCandidates = pool.filter((c) => shouldShowAngerMode(c));
+    let characterInfo;
+    let mode;
+    if (angerCandidates.length > 0) {
+        characterInfo = pickRandom(angerCandidates);
+        mode = 'anger';
+    } else {
+        characterInfo = pickRandom(pool);
+        mode = 'primary';
+    }
+    showInvitation(characterInfo, mode, {
         shouldShow: () => force || (isHomepage() && !isConsoleOpen() && !state.activeInvitation && !state.homepageInviteShown),
     }).then((shown) => {
         if (shown) {
@@ -2423,6 +2736,11 @@ function getSavedRetentionMessagesForCharacter(characterInfo) {
     return parsePoolList(settings.retentionMessages?.[characterInfo?.key] || '');
 }
 
+function getSavedAngerMessagesForCharacter(characterInfo) {
+    const settings = ensureSettings();
+    return parsePoolList(settings.angerMessages?.[characterInfo?.key] || '');
+}
+
 function getManualMessages(characterInfo) {
     return getSavedMessagesForCharacter(characterInfo)
         .map((line) => applyTemplate(line, characterInfo))
@@ -2435,12 +2753,63 @@ function getRetentionMessages(characterInfo) {
         .filter(Boolean);
 }
 
+function getAngerMessages(characterInfo) {
+    return getSavedAngerMessagesForCharacter(characterInfo)
+        .map((line) => applyTemplate(line, characterInfo))
+        .filter(Boolean);
+}
+
+function getRejectCount(characterInfo) {
+    if (!characterInfo?.key) {
+        return 0;
+    }
+    const settings = ensureSettings();
+    return Number(settings.rejectCounts?.[characterInfo.key] || 0);
+}
+
+function setRejectCount(characterInfo, value) {
+    if (!characterInfo?.key) {
+        return;
+    }
+    const settings = ensureSettings();
+    if (!settings.rejectCounts || typeof settings.rejectCounts !== 'object') {
+        settings.rejectCounts = {};
+    }
+    const next = Math.max(0, Math.floor(Number(value) || 0));
+    if (next <= 0) {
+        delete settings.rejectCounts[characterInfo.key];
+    } else {
+        settings.rejectCounts[characterInfo.key] = next;
+    }
+    saveSettingsDebounced();
+}
+
+function incrementRejectCount(characterInfo) {
+    setRejectCount(characterInfo, getRejectCount(characterInfo) + 1);
+}
+
+function shouldShowAngerMode(characterInfo) {
+    const settings = ensureSettings();
+    if (!characterInfo?.key) {
+        return false;
+    }
+    const threshold = clampNumber(settings.angerThreshold, 2, 50, defaultSettings.angerThreshold);
+    if (getRejectCount(characterInfo) < threshold) {
+        return false;
+    }
+    return getAngerMessages(characterInfo).length > 0;
+}
+
 function getFallbackMessage(characterInfo) {
     return t('invitation.defaultLine', { char: characterInfo?.name || t('invitation.unknownCharacter') });
 }
 
 function getFallbackRetentionMessage(characterInfo) {
     return t('invitation.defaultRetentionLine', { char: characterInfo?.name || t('invitation.unknownCharacter') });
+}
+
+function getFallbackAngerMessage(characterInfo) {
+    return t('invitation.defaultAngerLine', { char: characterInfo?.name || t('invitation.unknownCharacter') });
 }
 
 function extractGeneratedText(value) {
@@ -2705,17 +3074,62 @@ function getPresetBuiltinText(preset, kind, count, charName) {
     if (!preset) {
         return '';
     }
-    const keyPrefix = kind === 'retention' ? 'invitation.retentionPromptPreset' : 'invitation.promptPreset';
+    let keyPrefix;
+    if (kind === 'retention') keyPrefix = 'invitation.retentionPromptPreset';
+    else if (kind === 'anger') keyPrefix = 'invitation.angerPromptPreset';
+    else keyPrefix = 'invitation.promptPreset';
     return t(`${keyPrefix}.${preset}`, {
         char: charName || t('invitation.unknownCharacter'),
         count,
     });
 }
 
+function customTemplatesFieldFor(kind) {
+    if (kind === 'retention') return 'retentionCustomTemplates';
+    if (kind === 'anger') return 'angerCustomTemplates';
+    return 'aiCustomTemplates';
+}
+
+function presetFieldFor(kind) {
+    if (kind === 'retention') return 'retentionPromptPreset';
+    if (kind === 'anger') return 'angerPromptPreset';
+    return 'aiPromptPreset';
+}
+
+function promptBodyFieldFor(kind) {
+    if (kind === 'retention') return 'retentionPromptBody';
+    if (kind === 'anger') return 'angerPromptBody';
+    return 'aiPromptBody';
+}
+
+function batchCountFieldFor(kind) {
+    if (kind === 'retention') return 'retentionBatchCount';
+    if (kind === 'anger') return 'angerBatchCount';
+    return 'aiBatchCount';
+}
+
+function aiPromptFieldFor(kind) {
+    if (kind === 'retention') return 'retentionAiPrompt';
+    if (kind === 'anger') return 'angerAiPrompt';
+    return 'aiPrompt';
+}
+
+function instructionKeyFor(kind) {
+    if (kind === 'retention') return 'invitation.retentionAiBatchInstruction';
+    if (kind === 'anger') return 'invitation.angerAiBatchInstruction';
+    return 'invitation.aiBatchInstruction';
+}
+
+function rulesKeyFor(kind) {
+    if (kind === 'retention') return 'invitation.retentionAiOutputRules';
+    if (kind === 'anger') return 'invitation.angerAiOutputRules';
+    return 'invitation.aiOutputRules';
+}
+
 function getDefaultPromptBody(preset, kind, count) {
     if (isCustomTemplateKey(preset)) {
         const settings = ensureSettings();
-        const templates = kind === 'retention' ? settings.retentionCustomTemplates : settings.aiCustomTemplates;
+        const templates = settings[customTemplatesFieldFor(kind)];
         const name = getCustomTemplateName(preset);
         return String(templates?.[name] || '');
     }
@@ -2724,9 +3138,9 @@ function getDefaultPromptBody(preset, kind, count) {
 
 function getPromptPresetText(characterInfo, kind = 'dialogue') {
     const settings = ensureSettings();
-    const preset = kind === 'retention' ? settings.retentionPromptPreset : settings.aiPromptPreset;
-    const editedBody = kind === 'retention' ? settings.retentionPromptBody : settings.aiPromptBody;
-    const count = kind === 'retention' ? settings.retentionBatchCount : settings.aiBatchCount;
+    const preset = settings[presetFieldFor(kind)];
+    const editedBody = settings[promptBodyFieldFor(kind)];
+    const count = settings[batchCountFieldFor(kind)];
     const charName = characterInfo?.name || t('invitation.unknownCharacter');
 
     const rawBody = (editedBody && editedBody.trim())
@@ -2740,17 +3154,21 @@ function getPromptPresetText(characterInfo, kind = 'dialogue') {
 
 async function generateAiMessages(characterInfo, kind = 'dialogue') {
     const settings = ensureSettings();
-    const batchCount = kind === 'retention' ? settings.retentionBatchCount : settings.aiBatchCount;
+    const batchCount = settings[batchCountFieldFor(kind)];
     const persona = buildCharacterPersonaContext(characterInfo);
     const chatContext = await buildChatContext(characterInfo);
     const worldContext = await buildWorldInfoContext(characterInfo);
     const selectedPrompt = getPromptPresetText(characterInfo, kind);
-    const customPrompt = applyTemplate(String(kind === 'retention' ? settings.retentionAiPrompt : settings.aiPrompt || '').trim(), characterInfo);
-    const instructionKey = kind === 'retention' ? 'invitation.retentionAiBatchInstruction' : 'invitation.aiBatchInstruction';
-    const rulesKey = kind === 'retention' ? 'invitation.retentionAiOutputRules' : 'invitation.aiOutputRules';
+    const customPrompt = applyTemplate(String(settings[aiPromptFieldFor(kind)] || '').trim(), characterInfo);
+    const instructionKey = instructionKeyFor(kind);
+    const rulesKey = rulesKeyFor(kind);
+    const intensityLine = kind === 'anger'
+        ? t(`invitation.angerIntensity.${angerIntensityKeys.includes(settings.angerIntensity) ? settings.angerIntensity : 'restrained'}`)
+        : '';
     const prompt = [
         t(instructionKey, { char: characterInfo.name, count: batchCount }),
         selectedPrompt,
+        intensityLine,
         customPrompt ? `${t('invitation.customPromptLabel')}\n${customPrompt}` : '',
         persona ? `${t('invitation.characterCardLabel')}\n${persona}` : '',
         chatContext ? `${t('invitation.chatContextLabel')}\n${chatContext}` : '',
@@ -2768,6 +3186,36 @@ async function generateAiMessages(characterInfo, kind = 'dialogue') {
     return parseGeneratedLines(reply).slice(0, batchCount);
 }
 
+function aiButtonIdFor(kind) {
+    if (kind === 'retention') return '#pi_retention_ai_generate_batch';
+    if (kind === 'anger') return '#pi_anger_ai_generate_batch';
+    return '#pi_ai_generate_batch';
+}
+
+function generatingLabelFor(kind) {
+    if (kind === 'retention') return t('console.retention.generating');
+    if (kind === 'anger') return t('console.anger.generating');
+    return t('console.dialogue.generating');
+}
+
+function generateBatchLabelFor(kind) {
+    if (kind === 'retention') return t('console.retention.generateBatch');
+    if (kind === 'anger') return t('console.anger.generateBatch');
+    return t('console.dialogue.generateBatch');
+}
+
+function generateEmptyLabelFor(kind) {
+    if (kind === 'retention') return t('console.retention.generateEmpty');
+    if (kind === 'anger') return t('console.anger.generateEmpty');
+    return t('console.dialogue.generateEmpty');
+}
+
+function generateFailedLabelFor(kind) {
+    if (kind === 'retention') return t('console.retention.generateFailed');
+    if (kind === 'anger') return t('console.anger.generateFailed');
+    return t('console.dialogue.generateFailed');
+}
+
 async function handleGenerateAiBatch(root = state.overlay || document, kind = 'dialogue') {
     const characterInfo = getSelectedCharacter();
     if (!characterInfo) {
@@ -2775,9 +3223,9 @@ async function handleGenerateAiBatch(root = state.overlay || document, kind = 'd
         return;
     }
 
-    const button = root.querySelector(kind === 'retention' ? '#pi_retention_ai_generate_batch' : '#pi_ai_generate_batch');
-    const generatingLabel = kind === 'retention' ? t('console.retention.generating') : t('console.dialogue.generating');
-    const defaultLabel = kind === 'retention' ? t('console.retention.generateBatch') : t('console.dialogue.generateBatch');
+    const button = root.querySelector(aiButtonIdFor(kind));
+    const generatingLabel = generatingLabelFor(kind);
+    const defaultLabel = generateBatchLabelFor(kind);
     if (button) {
         button.disabled = true;
         button.textContent = generatingLabel;
@@ -2786,7 +3234,7 @@ async function handleGenerateAiBatch(root = state.overlay || document, kind = 'd
     try {
         const lines = await generateAiMessages(characterInfo, kind);
         if (!lines.length) {
-            notify('warning', kind === 'retention' ? t('console.retention.generateEmpty') : t('console.dialogue.generateEmpty'));
+            notify('warning', generateEmptyLabelFor(kind));
             return;
         }
 
@@ -2797,7 +3245,7 @@ async function handleGenerateAiBatch(root = state.overlay || document, kind = 'd
         if (ensureSettings().debug) {
             console.warn('[Private Invitation] AI batch generation failed:', error);
         }
-        notify('error', kind === 'retention' ? t('console.retention.generateFailed') : t('console.dialogue.generateFailed'));
+        notify('error', generateFailedLabelFor(kind));
     } finally {
         if (button) {
             button.disabled = false;
@@ -2806,10 +3254,21 @@ async function handleGenerateAiBatch(root = state.overlay || document, kind = 'd
     }
 }
 
+function draftListIdFor(kind) {
+    if (kind === 'retention') return '#pi_retention_ai_draft_list';
+    if (kind === 'anger') return '#pi_anger_ai_draft_list';
+    return '#pi_ai_draft_list';
+}
+
+function draftCountIdFor(kind) {
+    if (kind === 'retention') return '#pi_retention_ai_draft_count';
+    if (kind === 'anger') return '#pi_anger_ai_draft_count';
+    return '#pi_ai_draft_count';
+}
+
 function renderDraftList(root = state.overlay || document, kind = 'dialogue') {
-    const isRetention = kind === 'retention';
-    const listEl = root.querySelector(isRetention ? '#pi_retention_ai_draft_list' : '#pi_ai_draft_list');
-    const countEl = root.querySelector(isRetention ? '#pi_retention_ai_draft_count' : '#pi_ai_draft_count');
+    const listEl = root.querySelector(draftListIdFor(kind));
+    const countEl = root.querySelector(draftCountIdFor(kind));
     if (!listEl) {
         return;
     }
@@ -2867,15 +3326,21 @@ function renderDraftList(root = state.overlay || document, kind = 'dialogue') {
     }
 }
 
+function poolElementPrefixFor(kind) {
+    if (kind === 'retention') return '#pi_retention_pool';
+    if (kind === 'anger') return '#pi_anger_pool';
+    return '#pi_dialogue_pool';
+}
+
 function renderPoolList(root = state.overlay || document, kind = 'dialogue') {
-    const isRetention = kind === 'retention';
-    const listEl = root.querySelector(isRetention ? '#pi_retention_pool_list' : '#pi_dialogue_pool_list');
+    const prefix = poolElementPrefixFor(kind);
+    const listEl = root.querySelector(`${prefix}_list`);
     if (!listEl) {
         return;
     }
     const characterInfo = getSelectedCharacter();
     const lines = characterInfo ? getPoolLines(characterInfo, kind) : [];
-    const searchEl = root.querySelector(isRetention ? '#pi_retention_pool_search' : '#pi_dialogue_pool_search');
+    const searchEl = root.querySelector(`${prefix}_search`);
     const search = String(searchEl?.value || '').trim().toLowerCase();
 
     listEl.innerHTML = '';
@@ -2938,6 +3403,8 @@ function appendGeneratedLinesToSaved(root = state.overlay || document, kind = 'd
     saveSettingsDebounced();
     if (kind === 'retention') {
         renderRetentionEditor(root);
+    } else if (kind === 'anger') {
+        renderAngerEditor(root);
     } else {
         renderDialogueEditor(root);
     }
@@ -3014,6 +3481,8 @@ function syncSettingsFromDom(root = document) {
     const frameOpacitySlider = root.querySelector('#pi_frame_opacity');
     const barrageDuration = root.querySelector('#pi_barrage_duration_value') || root.querySelector('#pi_barrage_duration');
     const barrageDurationSlider = root.querySelector('#pi_barrage_duration');
+    const barrageLineCount = root.querySelector('#pi_barrage_line_count_value') || root.querySelector('#pi_barrage_line_count');
+    const barrageLineCountSlider = root.querySelector('#pi_barrage_line_count');
     const retentionChance = root.querySelector('#pi_retention_chance');
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
@@ -3194,6 +3663,13 @@ function syncSettingsFromDom(root = document) {
     if (barrageDurationSlider) {
         barrageDurationSlider.value = String(settings.barrageDuration);
     }
+    if (barrageLineCount) {
+        settings.barrageLineCount = clampNumber(barrageLineCount.value, 2, 8, defaultSettings.barrageLineCount);
+        barrageLineCount.value = String(settings.barrageLineCount);
+    }
+    if (barrageLineCountSlider) {
+        barrageLineCountSlider.value = String(settings.barrageLineCount);
+    }
     const bubbleOffsetX = root.querySelector('#pi_bubble_offset_x_value') || root.querySelector('#pi_bubble_offset_x');
     const bubbleOffsetXSlider = root.querySelector('#pi_bubble_offset_x');
     const bubbleOffsetY = root.querySelector('#pi_bubble_offset_y_value') || root.querySelector('#pi_bubble_offset_y');
@@ -3272,6 +3748,7 @@ function persistDialogueEditor(root = document) {
     const frameColor = root.querySelector('#pi_frame_color');
     const frameOpacity = root.querySelector('#pi_frame_opacity_value') || root.querySelector('#pi_frame_opacity');
     const barrageDuration = root.querySelector('#pi_barrage_duration_value') || root.querySelector('#pi_barrage_duration');
+    const barrageLineCount = root.querySelector('#pi_barrage_line_count_value') || root.querySelector('#pi_barrage_line_count');
 
     if (enabled) {
         settings.enabled = enabled.checked;
@@ -3403,6 +3880,9 @@ function persistDialogueEditor(root = document) {
     if (barrageDuration) {
         settings.barrageDuration = clampNumber(barrageDuration.value, 6, 60, defaultSettings.barrageDuration);
     }
+    if (barrageLineCount) {
+        settings.barrageLineCount = clampNumber(barrageLineCount.value, 2, 8, defaultSettings.barrageLineCount);
+    }
     const bubbleOffsetXEl = root.querySelector('#pi_bubble_offset_x_value') || root.querySelector('#pi_bubble_offset_x');
     const bubbleOffsetYEl = root.querySelector('#pi_bubble_offset_y_value') || root.querySelector('#pi_bubble_offset_y');
     if (bubbleOffsetXEl) {
@@ -3484,6 +3964,8 @@ function syncDomFromSettings(root = document) {
     const frameOpacityValue = root.querySelector('#pi_frame_opacity_value');
     const barrageDuration = root.querySelector('#pi_barrage_duration');
     const barrageDurationValue = root.querySelector('#pi_barrage_duration_value');
+    const barrageLineCount = root.querySelector('#pi_barrage_line_count');
+    const barrageLineCountValue = root.querySelector('#pi_barrage_line_count_value');
     const retentionChance = root.querySelector('#pi_retention_chance');
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
@@ -3638,6 +4120,12 @@ function syncDomFromSettings(root = document) {
     if (barrageDurationValue) {
         barrageDurationValue.value = String(settings.barrageDuration);
     }
+    if (barrageLineCount) {
+        barrageLineCount.value = String(settings.barrageLineCount);
+    }
+    if (barrageLineCountValue) {
+        barrageLineCountValue.value = String(settings.barrageLineCount);
+    }
     const bubbleOffsetXSyncEl = root.querySelector('#pi_bubble_offset_x');
     const bubbleOffsetXSyncValue = root.querySelector('#pi_bubble_offset_x_value');
     const bubbleOffsetYSyncEl = root.querySelector('#pi_bubble_offset_y');
@@ -3669,6 +4157,7 @@ function syncDomFromSettings(root = document) {
     renderCharacterPool(root);
     renderDialogueEditor(root);
     renderRetentionEditor(root);
+    renderAngerEditor(root);
     renderWorldInfoList(root);
     renderCurrentCharacterBanner(root);
 }
@@ -3826,6 +4315,7 @@ function refreshUi() {
     renderCharacterPool(state.overlay || document);
     renderDialogueEditor(state.overlay || document);
     renderRetentionEditor(state.overlay || document);
+    renderAngerEditor(state.overlay || document);
     renderWorldInfoList(state.overlay || document);
     renderPreview(state.overlay || document);
     renderMiniPreview(state.overlay || document);
@@ -3878,6 +4368,7 @@ function openConsole(tab = 'pool') {
     renderCharacterPool(overlay);
     renderDialogueEditor(overlay);
     renderRetentionEditor(overlay);
+    renderAngerEditor(overlay);
     renderChatFileList(overlay);
     renderWorldInfoList(overlay);
     renderPreview(overlay);
@@ -4183,19 +4674,24 @@ function bindScopeTabs(root) {
 }
 
 function bindPromptTemplateControls(root, kind) {
-    const isRetention = kind === 'retention';
-    const prefix = isRetention ? '#pi_retention' : '#pi_ai';
+    let prefix;
+    if (kind === 'retention') prefix = '#pi_retention';
+    else if (kind === 'anger') prefix = '#pi_anger';
+    else prefix = '#pi_ai';
     const presetSelect = root.querySelector(`${prefix}_prompt_preset`);
     const bodyTextarea = root.querySelector(`${prefix}_prompt_body`);
     const resetButton = root.querySelector(`${prefix}_reset_prompt`);
     const saveButton = root.querySelector(`${prefix}_save_template`);
     const deleteButton = root.querySelector(`${prefix}_delete_template`);
 
-    const settingsPresetKey = isRetention ? 'retentionPromptPreset' : 'aiPromptPreset';
-    const settingsBodyKey = isRetention ? 'retentionPromptBody' : 'aiPromptBody';
-    const settingsTemplatesKey = isRetention ? 'retentionCustomTemplates' : 'aiCustomTemplates';
-    const settingsCountKey = isRetention ? 'retentionBatchCount' : 'aiBatchCount';
-    const i18nNamespace = isRetention ? 'console.retention' : 'console.dialogue';
+    const settingsPresetKey = presetFieldFor(kind);
+    const settingsBodyKey = promptBodyFieldFor(kind);
+    const settingsTemplatesKey = customTemplatesFieldFor(kind);
+    const settingsCountKey = batchCountFieldFor(kind);
+    let i18nNamespace;
+    if (kind === 'retention') i18nNamespace = 'console.retention';
+    else if (kind === 'anger') i18nNamespace = 'console.anger';
+    else i18nNamespace = 'console.dialogue';
 
     function loadBodyFromPreset(presetValue) {
         const settings = ensureSettings();
@@ -4289,8 +4785,10 @@ function bindPromptTemplateControls(root, kind) {
 }
 
 function bindDraftListControls(root, kind) {
-    const isRetention = kind === 'retention';
-    const prefix = isRetention ? '#pi_retention_ai' : '#pi_ai';
+    let prefix;
+    if (kind === 'retention') prefix = '#pi_retention_ai';
+    else if (kind === 'anger') prefix = '#pi_anger_ai';
+    else prefix = '#pi_ai';
     const listEl = root.querySelector(`${prefix}_draft_list`);
     const clearButton = root.querySelector(`${prefix}_draft_clear`);
 
@@ -4327,9 +4825,115 @@ function bindDraftListControls(root, kind) {
     }
 }
 
+function bindAngerCardControls(root) {
+    const threshold = root.querySelector('#pi_anger_threshold');
+    const countdown = root.querySelector('#pi_anger_countdown_seconds');
+    const resetOnAccept = root.querySelector('#pi_anger_reset_on_accept');
+    const accentColor = root.querySelector('#pi_anger_accent_color');
+    const resetCountBtn = root.querySelector('#pi_anger_reset_count');
+    const testBtn = root.querySelector('#pi_anger_test');
+    const batchCount = root.querySelector('#pi_anger_batch_count');
+
+    if (threshold) {
+        threshold.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerThreshold = clampNumber(threshold.value, 2, 50, defaultSettings.angerThreshold);
+            threshold.value = String(settings.angerThreshold);
+            saveSettingsDebounced();
+        });
+    }
+    if (countdown) {
+        countdown.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerCountdownSeconds = clampNumber(countdown.value, 3, 20, defaultSettings.angerCountdownSeconds);
+            countdown.value = String(settings.angerCountdownSeconds);
+            saveSettingsDebounced();
+        });
+    }
+    const intensity = root.querySelector('#pi_anger_intensity');
+    if (intensity) {
+        intensity.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerIntensity = angerIntensityKeys.includes(intensity.value) ? intensity.value : defaultSettings.angerIntensity;
+            intensity.value = settings.angerIntensity;
+            saveSettingsDebounced();
+        });
+    }
+    if (resetOnAccept) {
+        resetOnAccept.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerResetOnAccept = Boolean(resetOnAccept.checked);
+            saveSettingsDebounced();
+        });
+    }
+    if (accentColor) {
+        accentColor.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerAccentColor = normalizeColor(accentColor.value, defaultSettings.angerAccentColor);
+            saveSettingsDebounced();
+        });
+    }
+    if (batchCount) {
+        batchCount.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerBatchCount = clampNumber(batchCount.value, 3, 30, defaultSettings.angerBatchCount);
+            batchCount.value = String(settings.angerBatchCount);
+            saveSettingsDebounced();
+        });
+    }
+    if (resetCountBtn) {
+        resetCountBtn.addEventListener('click', () => {
+            const characterInfo = getSelectedCharacter();
+            if (!characterInfo) {
+                notify('warning', t('console.dialogue.noCharacters'));
+                return;
+            }
+            setRejectCount(characterInfo, 0);
+            renderAngerEditor(root);
+            notify('success', t('console.anger.resetCountDone'));
+        });
+    }
+    if (testBtn) {
+        testBtn.addEventListener('click', () => {
+            const characterInfo = getSelectedCharacter();
+            if (!characterInfo) {
+                notify('warning', t('console.dialogue.noCharacters'));
+                return;
+            }
+            state.invitationFromConsoleTest = true;
+            closeConsole();
+            showInvitation(characterInfo, 'anger');
+        });
+    }
+
+    const angerAiPrompt = root.querySelector('#pi_anger_ai_prompt');
+    if (angerAiPrompt) {
+        angerAiPrompt.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerAiPrompt = String(angerAiPrompt.value || '');
+            saveSettingsDebounced();
+        });
+    }
+    const angerPromptBody = root.querySelector('#pi_anger_prompt_body');
+    if (angerPromptBody) {
+        angerPromptBody.addEventListener('change', () => {
+            const settings = ensureSettings();
+            settings.angerPromptBody = String(angerPromptBody.value || '');
+            saveSettingsDebounced();
+        });
+    }
+    const angerGenerateBtn = root.querySelector('#pi_anger_ai_generate_batch');
+    if (angerGenerateBtn) {
+        angerGenerateBtn.addEventListener('click', () => handleGenerateAiBatch(root, 'anger'));
+    }
+    const angerAppendAllBtn = root.querySelector('#pi_anger_ai_append_all');
+    if (angerAppendAllBtn) {
+        angerAppendAllBtn.addEventListener('click', () => appendGeneratedLinesToSaved(root, 'anger'));
+    }
+}
+
 function bindPoolListControls(root, kind) {
-    const isRetention = kind === 'retention';
-    const prefix = isRetention ? '#pi_retention_pool' : '#pi_dialogue_pool';
+    const prefix = poolElementPrefixFor(kind);
     const listEl = root.querySelector(`${prefix}_list`);
     const input = root.querySelector(`${prefix}_input`);
     const addButton = root.querySelector(`${prefix}_add`);
@@ -4721,6 +5325,7 @@ function bindConsoleEvents(root) {
         ['#pi_frame_height', '#pi_frame_height_value'],
         ['#pi_frame_opacity', '#pi_frame_opacity_value'],
         ['#pi_barrage_duration', '#pi_barrage_duration_value'],
+        ['#pi_barrage_line_count', '#pi_barrage_line_count_value'],
         ['#pi_bubble_offset_x', '#pi_bubble_offset_x_value'],
         ['#pi_bubble_offset_y', '#pi_bubble_offset_y_value'],
     ];
@@ -4756,6 +5361,7 @@ function bindConsoleEvents(root) {
             persistDialogueEditor(root);
             renderDialogueEditor(root);
             renderRetentionEditor(root);
+            renderAngerEditor(root);
             renderChatFileList(root);
             renderCurrentCharacterBanner(root);
         });
@@ -4783,6 +5389,7 @@ function bindConsoleEvents(root) {
             saveSettingsDebounced();
             renderDialogueEditor(root);
             renderRetentionEditor(root);
+            renderAngerEditor(root);
             renderChatFileList(root);
             renderPreview(root);
             renderCurrentCharacterBanner(root);
@@ -4983,10 +5590,14 @@ function bindConsoleEvents(root) {
 
     bindPromptTemplateControls(root, 'dialogue');
     bindPromptTemplateControls(root, 'retention');
+    bindPromptTemplateControls(root, 'anger');
     bindDraftListControls(root, 'dialogue');
     bindDraftListControls(root, 'retention');
+    bindDraftListControls(root, 'anger');
     bindPoolListControls(root, 'dialogue');
     bindPoolListControls(root, 'retention');
+    bindPoolListControls(root, 'anger');
+    bindAngerCardControls(root);
     bindAppearanceControls(root);
     bindCharacterStyleControls(root);
     bindApiCardControls(root);
@@ -5105,6 +5716,8 @@ function bindConsoleEvents(root) {
         '#pi_frame_opacity_value',
         '#pi_barrage_duration',
         '#pi_barrage_duration_value',
+        '#pi_barrage_line_count',
+        '#pi_barrage_line_count_value',
         '#pi_bubble_offset_x',
         '#pi_bubble_offset_x_value',
         '#pi_bubble_offset_y',
