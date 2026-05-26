@@ -1,0 +1,38 @@
+<div id="private_invitation_settings" class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+        <b data-i18n="settings.title">专属邀约</b>
+        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content" style="display:none;">
+        <div class="pi-settings-head">
+            <span class="pi-settings-note" data-i18n="settings.note">主控制台是居中弹窗。入口保留在 extension menu。</span>
+            <span id="pi_status_badge" class="pi-badge" data-state="idle" data-i18n="settings.status.idle">待机</span>
+        </div>
+
+        <div class="pi-settings-row">
+            <button id="pi_open_console" type="button" class="menu_button menu_button_icon">
+                <i class="fa-solid fa-window-maximize"></i>
+                <span data-i18n="settings.openConsole">打开控制台</span>
+            </button>
+            <button id="pi_refresh_view" type="button" class="menu_button menu_button_icon">
+                <i class="fa-solid fa-rotate"></i>
+                <span data-i18n="settings.reload">刷新视图</span>
+            </button>
+        </div>
+
+        <div class="pi-settings-grid">
+            <label class="pi-switch">
+                <input id="pi_enabled" type="checkbox">
+                <span data-i18n="settings.enabled">启用功能</span>
+            </label>
+            <label class="pi-switch">
+                <input id="pi_show_menu_entry" type="checkbox">
+                <span data-i18n="settings.menuEntry">显示扩展菜单入口</span>
+            </label>
+            <label class="pi-switch">
+                <input id="pi_auto_open_home" type="checkbox">
+                <span data-i18n="settings.autoOpenHome">主页自动弹出</span>
+            </label>
+        </div>
+    </div>
+</div>

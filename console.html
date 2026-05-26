@@ -1,0 +1,678 @@
+<dialog id="pi_overlay" class="pi-overlay">
+    <div id="pi_modal" class="pi-modal" role="dialog" aria-modal="true" aria-labelledby="pi_modal_title">
+        <div class="pi-header">
+            <div class="pi-title">
+                <strong id="pi_modal_title" data-i18n="console.title">专属邀约</strong>
+                <span data-i18n="console.subtitle">随机封面、角色文案和挽留设置</span>
+            </div>
+            <button id="pi_close" type="button" class="pi-close-btn" data-i18n="[title]console.close" aria-label="Close">×</button>
+        </div>
+
+        <nav class="pi-tabs">
+            <button type="button" class="pi-tab active" data-pi-tab="characters" data-i18n="console.tabs.characters">角色</button>
+            <button type="button" class="pi-tab" data-pi-tab="copy" data-i18n="console.tabs.copy">文案</button>
+            <button type="button" class="pi-tab" data-pi-tab="ai" data-i18n="console.tabs.ai">AI 生成</button>
+            <button type="button" class="pi-tab" data-pi-tab="appearance" data-i18n="console.tabs.appearance">外观</button>
+            <button type="button" class="pi-tab" data-pi-tab="control" data-i18n="console.tabs.control">运行控制</button>
+        </nav>
+
+        <div class="pi-body">
+
+            <!-- Tab 1: 角色 -->
+            <section class="pi-page active" data-pi-page="characters">
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.pool.title">邀约角色</strong>
+                        <span class="pi-muted" data-i18n="console.pool.hint">勾选会随机出现在主页邀约里的角色。未勾选时默认使用全部角色。</span>
+                    </div>
+                    <div class="pi-pool-toolbar">
+                        <input id="pi_pool_search" class="text_pole" type="search" data-i18n-placeholder="console.pool.search" placeholder="搜索角色">
+                        <button id="pi_pool_select_visible" type="button" class="menu_button" data-i18n="console.pool.selectVisible">勾选当前列表</button>
+                        <button id="pi_pool_clear" type="button" class="menu_button" data-i18n="console.pool.clear">清空勾选</button>
+                    </div>
+                    <div id="pi_pool_count" class="pi-muted"></div>
+                    <div id="pi_character_list" class="pi-character-list"></div>
+                    <details class="pi-foldable">
+                        <summary data-i18n="console.pool.manualToggle">手动补充角色（按名字 / 文件名 / ID）</summary>
+                        <div class="pi-field">
+                            <label for="pi_pool_text" data-i18n="console.pool.manualTitle">手动补充</label>
+                            <textarea id="pi_pool_text" class="text_pole pi-textarea pi-textarea--small" rows="4" data-i18n-placeholder="console.pool.placeholder" placeholder="角色名、角色卡文件名或角色 ID，一行一个"></textarea>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <!-- Tab 2: 文案 -->
+            <section class="pi-page" data-pi-page="copy">
+                <!-- 角色选择卡（主邀约 + 挽留共用） -->
+                <details class="pi-card pi-card--foldable" open>
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.charactersTitle">角色</strong>
+                        <span class="pi-muted" data-i18n="console.copy.charactersNote">先选一个角色，下面同时显示这个角色的主邀约文案池和挽留文案池。AI 生成 tab 也会跟随这里选的角色。</span>
+                    </summary>
+                    <div class="pi-field">
+                        <label for="pi_copy_character" data-i18n="console.copy.charactersLabel">当前角色</label>
+                        <input id="pi_copy_character_search" class="text_pole" type="search" data-i18n-placeholder="console.copy.charactersSearch" placeholder="搜索角色">
+                        <select id="pi_copy_character" class="text_pole pi-hidden-select" aria-hidden="true" tabindex="-1"></select>
+                        <div id="pi_copy_character_list" class="pi-picker-list"></div>
+                    </div>
+                    <details class="pi-char-style">
+                        <summary data-i18n="console.charStyle.title">本角色专属配色 / 形状（覆盖全局）</summary>
+                        <div class="pi-field">
+                            <label class="pi-switch">
+                                <input id="pi_char_style_enabled" type="checkbox">
+                                <span data-i18n="console.charStyle.enabled">为当前角色启用专属外观</span>
+                            </label>
+                            <small class="pi-muted" data-i18n="console.charStyle.note">关闭则用全局风格设置。下面只覆盖填了的项，留空 / 不勾选保持全局。</small>
+                        </div>
+                        <div class="pi-field">
+                            <label class="pi-switch">
+                                <input id="pi_char_auto_adapt_color" type="checkbox">
+                                <span data-i18n="console.charStyle.autoAdapt">本角色自适应文字配色</span>
+                            </label>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_char_bubble_shape" data-i18n="console.charStyle.bubbleShape">气泡形状（留空=全局）</label>
+                            <select id="pi_char_bubble_shape" class="text_pole">
+                                <option value="" data-i18n="console.charStyle.inherit">沿用全局</option>
+                                <option value="pill" data-i18n="console.style.bubbleShape.pill">圆角对话框</option>
+                                <option value="cloud" data-i18n="console.style.bubbleShape.cloud">云朵气泡（卡通）</option>
+                                <option value="sticker" data-i18n="console.style.bubbleShape.sticker">便签贴纸</option>
+                                <option value="note" data-i18n="console.style.bubbleShape.note">黄色便签</option>
+                                <option value="frameless" data-i18n="console.style.bubbleShape.frameless">无框纯文字</option>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_char_bubble_position" data-i18n="console.charStyle.bubblePosition">气泡位置（留空=全局）</label>
+                            <select id="pi_char_bubble_position" class="text_pole">
+                                <option value="" data-i18n="console.charStyle.inherit">沿用全局</option>
+                                <option value="top-left" data-i18n="console.style.bubblePosition.topLeft">左上</option>
+                                <option value="top-center" data-i18n="console.style.bubblePosition.topCenter">顶部居中</option>
+                                <option value="top-right" data-i18n="console.style.bubblePosition.topRight">右上</option>
+                                <option value="center" data-i18n="console.style.bubblePosition.center">正中央</option>
+                                <option value="bottom-left" data-i18n="console.style.bubblePosition.bottomLeft">左下</option>
+                                <option value="bottom-center" data-i18n="console.style.bubblePosition.bottomCenter">底部居中</option>
+                                <option value="bottom-right" data-i18n="console.style.bubblePosition.bottomRight">右下</option>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_char_text_color" data-i18n="console.charStyle.textColor">字体颜色</label>
+                            <input id="pi_char_text_color" type="color" class="pi-color-input">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_char_text_stroke_color" data-i18n="console.charStyle.textStrokeColor">描边颜色</label>
+                            <input id="pi_char_text_stroke_color" type="color" class="pi-color-input">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_char_frame_color" data-i18n="console.charStyle.frameColor">气泡/横幅颜色</label>
+                            <input id="pi_char_frame_color" type="color" class="pi-color-input">
+                        </div>
+                        <div class="pi-actions-row pi-actions-row--compact">
+                            <button id="pi_char_style_copy_global" type="button" class="menu_button" data-i18n="console.charStyle.copyGlobal">从全局拷贝当前设置</button>
+                            <button id="pi_char_style_reset" type="button" class="menu_button" data-i18n="console.charStyle.reset">清空本角色覆盖</button>
+                        </div>
+                    </details>
+                </details>
+
+                <!-- 主邀约文案池 -->
+                <details class="pi-card pi-card--foldable" open>
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.dialoguePoolTitle">主邀约文案池</strong>
+                        <span class="pi-muted" data-i18n="console.copy.dialoguePoolNote">主页随机弹出时从这里抽。每个角色独立保存。</span>
+                    </summary>
+                    <div id="pi_dialogue_count" class="pi-muted"></div>
+                    <div class="pi-field">
+                        <div class="pi-pool-add-row">
+                            <input id="pi_dialogue_pool_input" type="text" class="text_pole" data-i18n-placeholder="console.dialogue.poolInputPlaceholder" placeholder="输入一条文案，回车或按按钮添加">
+                            <button id="pi_dialogue_pool_add" type="button" class="menu_button" data-i18n="console.dialogue.poolAdd">添加</button>
+                        </div>
+                        <input id="pi_dialogue_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.dialogue.poolSearch" placeholder="在文案池中搜索">
+                        <small class="pi-muted" data-i18n="console.dialogue.poolNote">点 chip 文字可直接编辑，回车 / 失焦保存。点 × 单独删除。</small>
+                        <div id="pi_dialogue_pool_list" class="pi-chip-list"></div>
+                    </div>
+                </details>
+
+                <!-- 挽留文案池 -->
+                <details class="pi-card pi-card--foldable" open>
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.retentionPoolTitle">挽留文案池</strong>
+                        <span class="pi-muted" data-i18n="console.copy.retentionPoolNote">主邀约被拒绝后，按概率抽这里的文案做最后挽留。</span>
+                    </summary>
+                    <div class="pi-field">
+                        <label for="pi_retention_chance" data-i18n="console.retention.chance">挽留概率</label>
+                        <div class="pi-range-row">
+                            <input id="pi_retention_chance" type="range" min="0" max="100" step="1">
+                            <input id="pi_retention_chance_value" type="number" min="0" max="100" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div id="pi_retention_count" class="pi-muted"></div>
+                    <div class="pi-field">
+                        <div class="pi-pool-add-row">
+                            <input id="pi_retention_pool_input" type="text" class="text_pole" data-i18n-placeholder="console.retention.poolInputPlaceholder" placeholder="输入一条挽留文案，回车或按按钮添加">
+                            <button id="pi_retention_pool_add" type="button" class="menu_button" data-i18n="console.retention.poolAdd">添加</button>
+                        </div>
+                        <input id="pi_retention_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.retention.poolSearch" placeholder="在挽留池中搜索">
+                        <small class="pi-muted" data-i18n="console.retention.poolNote">用于用户拒绝后触发的第二次挽留。点 chip 文字可编辑，× 单独删除。</small>
+                        <div id="pi_retention_pool_list" class="pi-chip-list"></div>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Tab 3: AI 生成 -->
+            <section class="pi-page" data-pi-page="ai">
+                <details class="pi-foldable pi-api-card" id="pi_api_card">
+                    <summary>
+                        <span class="pi-foldable-title" data-i18n="console.api.title">API 设置</span>
+                        <span class="pi-api-mode-tag" data-pi-api-mode-tag></span>
+                    </summary>
+                    <p class="pi-card-note" data-i18n="console.api.note">共享：使用 SillyTavern 当前 API。独立：通过 SillyTavern 后端请求你自己的 OpenAI 兼容接口。</p>
+                    <div class="pi-api-mode-row">
+                        <label class="pi-api-mode-option">
+                            <input type="radio" name="pi_api_mode" value="shared">
+                            <span data-i18n="console.api.modeShared">共享 API（默认）</span>
+                        </label>
+                        <label class="pi-api-mode-option">
+                            <input type="radio" name="pi_api_mode" value="independent">
+                            <span data-i18n="console.api.modeIndependent">独立 API</span>
+                        </label>
+                    </div>
+                    <div class="pi-api-profile-row">
+                        <label for="pi_api_profile_select" class="pi-api-profile-label" data-i18n="console.api.profileLabel">配置档案</label>
+                        <select id="pi_api_profile_select" class="text_pole pi-api-profile-select"></select>
+                        <div class="pi-api-profile-actions pi-actions-row">
+                            <button type="button" id="pi_api_profile_save_as" class="menu_button" data-i18n="console.api.profileSaveAs">另存为…</button>
+                            <button type="button" id="pi_api_profile_save" class="menu_button" data-i18n="console.api.profileSave">更新当前档案</button>
+                            <button type="button" id="pi_api_profile_delete" class="menu_button" data-i18n="console.api.profileDelete">删除当前档案</button>
+                        </div>
+                    </div>
+                    <div class="pi-api-fields" data-pi-api-fields>
+                        <label class="pi-api-field">
+                            <span data-i18n="console.api.apiUrl">API URL</span>
+                            <input id="pi_api_url" type="text" class="text_pole" placeholder="https://api.openai.com/v1" autocomplete="off">
+                        </label>
+                        <label class="pi-api-field">
+                            <span data-i18n="console.api.apiKey">API Key</span>
+                            <input id="pi_api_key" type="password" class="text_pole" placeholder="sk-..." autocomplete="off">
+                        </label>
+                        <label class="pi-api-field pi-api-field--model">
+                            <span data-i18n="console.api.apiModel">模型 ID</span>
+                            <div class="pi-api-model-row">
+                                <input id="pi_api_model" type="text" class="text_pole" placeholder="gpt-4o-mini" autocomplete="off" list="pi_api_model_list">
+                                <datalist id="pi_api_model_list"></datalist>
+                                <button type="button" id="pi_api_fetch_models" class="menu_button pi-api-fetch-btn" data-i18n="[title]console.api.fetchModelsTitle" title="拉取模型列表">↻</button>
+                            </div>
+                            <select id="pi_api_model_select" class="text_pole pi-api-model-select" hidden></select>
+                            <span class="pi-api-fetch-status" data-pi-fetch-status></span>
+                        </label>
+                        <p class="pi-api-fields-note" data-i18n="console.api.fieldsNote">URL 自动补 /v1/chat/completions。仅支持 OpenAI 兼容接口（chat/completions）。</p>
+                    </div>
+                </details>
+                <div class="pi-current-character-banner" id="pi_current_character_banner" data-pi-empty="true">
+                    <img class="pi-current-character-avatar" alt="" data-pi-current-character-avatar>
+                    <div class="pi-current-character-info">
+                        <span class="pi-current-character-label" data-i18n="console.ai.currentCharacterLabel">当前角色</span>
+                        <strong data-pi-current-character-name data-i18n="console.ai.currentCharacterNone">未选择</strong>
+                    </div>
+                    <button type="button" id="pi_current_character_switch" class="menu_button" data-i18n="console.ai.currentCharacterSwitch">去文案 tab 切换</button>
+                </div>
+                <div class="pi-scope-tabs" data-pi-scope-host="ai">
+                    <button type="button" class="pi-scope-tab active" data-pi-scope="dialogue" data-pi-scope-host="ai" data-i18n="console.scope.dialogue">主邀约</button>
+                    <button type="button" class="pi-scope-tab" data-pi-scope="retention" data-pi-scope-host="ai" data-i18n="console.scope.retention">挽留</button>
+                </div>
+
+                <!-- 主邀约 AI scope -->
+                <div class="pi-scope-pane" data-pi-scope-pane="dialogue" data-pi-scope-host="ai">
+                    <div class="pi-card">
+                        <div class="pi-card-head">
+                            <strong data-i18n="console.ai.dialogueTitle">主邀约 AI 生成</strong>
+                            <span class="pi-muted" data-i18n="console.ai.charHint">为顶部「当前角色」批量写主邀约草稿。换角色去文案 tab。</span>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_ai_prompt_preset" data-i18n="console.dialogue.promptPreset">文案生成类型</label>
+                            <select id="pi_ai_prompt_preset" class="text_pole">
+                                <optgroup id="pi_ai_prompt_builtin_group" data-i18n="[label]console.dialogue.promptBuiltinGroup" label="内置预设">
+                                    <option value="memoryFlashback" data-i18n="console.dialogue.promptPreset.memoryFlashback">回忆闪回</option>
+                                    <option value="signatureScene" data-i18n="console.dialogue.promptPreset.signatureScene">角色名场面</option>
+                                    <option value="oldChatEcho" data-i18n="console.dialogue.promptPreset.oldChatEcho">旧聊天回声</option>
+                                    <option value="worldFragment" data-i18n="console.dialogue.promptPreset.worldFragment">世界观碎片</option>
+                                    <option value="emotionalHook" data-i18n="console.dialogue.promptPreset.emotionalHook">情绪钩子</option>
+                                </optgroup>
+                                <optgroup id="pi_ai_prompt_custom_group" data-i18n="[label]console.dialogue.promptCustomGroup" label="我的模板"></optgroup>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_ai_prompt_body" data-i18n="console.dialogue.promptBody">提示词正文（可编辑）</label>
+                            <textarea id="pi_ai_prompt_body" class="text_pole pi-textarea" rows="6" data-i18n-placeholder="console.dialogue.promptBodyPlaceholder" placeholder="可直接修改这段提示词。{char} 会被替换成角色名，{count} 会被替换成生成条数。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_ai_reset_prompt" type="button" class="menu_button" data-i18n="console.dialogue.resetPrompt">还原内置预设</button>
+                                <button id="pi_ai_save_template" type="button" class="menu_button" data-i18n="console.dialogue.saveTemplate">保存为我的模板</button>
+                                <button id="pi_ai_delete_template" type="button" class="menu_button" data-i18n="console.dialogue.deleteTemplate">删除当前模板</button>
+                            </div>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_ai_batch_count" data-i18n="console.dialogue.batchCount">批量生成条数</label>
+                            <input id="pi_ai_batch_count" type="number" min="3" max="30" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_ai_max_tokens" data-i18n="console.dialogue.maxTokens">单次最大 token</label>
+                            <input id="pi_ai_max_tokens" type="number" min="800" max="16000" step="100" class="text_pole pi-number">
+                            <small class="pi-muted" data-i18n="console.dialogue.maxTokensNote">Gemini / DeepSeek 等带 reasoning 的模型会先消耗 token 思考，输出空白时把这个值调大（建议 2400 起）。</small>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_ai_prompt" data-i18n="console.dialogue.aiPrompt">补充生成要求</label>
+                            <textarea id="pi_ai_prompt" class="text_pole pi-textarea" rows="5" data-i18n-placeholder="console.dialogue.aiPromptPlaceholder" placeholder="补充语气、关系阶段、想避开的表达。可以用 {char} 代表角色名。"></textarea>
+                        </div>
+                        <div class="pi-context-grid">
+                            <div class="pi-context-card">
+                                <label class="pi-switch">
+                                    <input id="pi_ai_use_chat_context" type="checkbox">
+                                    <span data-i18n="console.context.useChat">读取聊天记录</span>
+                                </label>
+                                <div class="pi-muted" data-i18n="console.context.chatNote">可选聊天文件，并用楼层范围分批生成。未勾选文件时默认读取当前聊天。</div>
+                                <div class="pi-range-row pi-range-row--floor-triple">
+                                    <label class="pi-field pi-field--floor">
+                                        <span data-i18n="console.context.floorStart">起始楼层</span>
+                                        <input id="pi_chat_floor_start" type="number" min="0" step="1" class="text_pole pi-number">
+                                    </label>
+                                    <label class="pi-field pi-field--floor">
+                                        <span data-i18n="console.context.floorEnd">结束楼层</span>
+                                        <input id="pi_chat_floor_end" type="number" min="0" step="1" class="text_pole pi-number">
+                                    </label>
+                                    <label class="pi-field pi-field--floor">
+                                        <span data-i18n="console.context.chunkSize">每批楼层数</span>
+                                        <input id="pi_chat_chunk_size" type="number" min="1" max="500" step="1" class="text_pole pi-number">
+                                    </label>
+                                </div>
+                                <small class="pi-muted" data-i18n="console.context.chunkSummary">实际本次发送：从「起始楼层」开始，最多取「每批楼层数」条，到「结束楼层」为止（取较小者）。</small>
+                                <div class="pi-field">
+                                    <label for="pi_chat_filter_tags" data-i18n="console.context.filterTags">过滤标签</label>
+                                    <input id="pi_chat_filter_tags" type="text" class="text_pole" data-i18n-placeholder="console.context.filterTagsPlaceholder" placeholder="例如 回忆,summary，留空表示注入全文">
+                                    <small class="pi-muted" data-i18n="console.context.filterTagsNote">填了标签名后，只把 &lt;标签&gt;...&lt;/标签&gt; 包裹的内容送给 AI，过滤掉日常对话噪声。多个标签用逗号分隔。</small>
+                                </div>
+                                <div class="pi-field">
+                                    <label for="pi_chat_exclude_tags" data-i18n="console.context.excludeTags">排除标签</label>
+                                    <input id="pi_chat_exclude_tags" type="text" class="text_pole" data-i18n-placeholder="console.context.excludeTagsPlaceholder" placeholder="例如 thinking,system，留空表示不排除">
+                                    <small class="pi-muted" data-i18n="console.context.excludeTagsNote">先把 &lt;标签&gt;...&lt;/标签&gt; 包裹的内容从聊天里剥掉，再做包含过滤。用来去掉系统提示、思考过程等噪声。</small>
+                                </div>
+                                <input id="pi_chat_file_search" class="text_pole pi-context-search" type="search" data-i18n-placeholder="console.context.chatSearch" placeholder="搜索聊天文件">
+                                <div class="pi-actions-row pi-actions-row--compact">
+                                    <button id="pi_refresh_chat_files" type="button" class="menu_button" data-i18n="console.context.refreshChats">刷新聊天文件</button>
+                                    <span id="pi_chat_file_count" class="pi-muted"></span>
+                                </div>
+                                <div id="pi_chat_file_list" class="pi-context-list"></div>
+                            </div>
+                            <div class="pi-context-card">
+                                <label class="pi-switch">
+                                    <input id="pi_ai_use_world_info" type="checkbox">
+                                    <span data-i18n="console.context.useWorldInfo">读取世界书</span>
+                                </label>
+                                <div class="pi-muted" data-i18n="console.context.worldNote">勾选要参与生成的世界书。只读取内容，不修改世界书。</div>
+                                <div class="pi-field pi-field--inline">
+                                    <label for="pi_world_entry_limit" data-i18n="console.context.worldEntryLimit">每本读取条目上限</label>
+                                    <input id="pi_world_entry_limit" type="number" min="1" max="300" step="1" class="text_pole pi-number">
+                                </div>
+                                <input id="pi_world_search" class="text_pole pi-context-search" type="search" data-i18n-placeholder="console.context.worldSearch" placeholder="搜索世界书">
+                                <div class="pi-actions-row pi-actions-row--compact">
+                                    <button id="pi_refresh_world_info" type="button" class="menu_button" data-i18n="console.context.refreshWorldInfo">刷新世界书</button>
+                                    <span id="pi_world_info_count" class="pi-muted"></span>
+                                </div>
+                                <div id="pi_world_info_list" class="pi-context-list"></div>
+                            </div>
+                        </div>
+                        <div class="pi-actions-row">
+                            <button id="pi_ai_generate_batch" type="button" class="menu_button" data-i18n="console.dialogue.generateBatch">AI 批量生成草稿</button>
+                            <button id="pi_ai_append_generated" type="button" class="menu_button" data-i18n="console.dialogue.appendAll">全部加入文案池</button>
+                            <button id="pi_ai_draft_clear" type="button" class="menu_button" data-i18n="console.dialogue.clearDrafts">清空草稿</button>
+                            <span id="pi_ai_token_estimate" class="pi-token-estimate"></span>
+                        </div>
+                        <div class="pi-field">
+                            <label data-i18n="console.dialogue.generatedDraft">AI 文案草稿</label>
+                            <small class="pi-muted" data-i18n="console.dialogue.draftHint">点 + 把单条加入文案池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
+                            <span id="pi_ai_draft_count" class="pi-muted"></span>
+                            <div id="pi_ai_draft_list" class="pi-draft-list" role="list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 挽留 AI scope -->
+                <div class="pi-scope-pane" data-pi-scope-pane="retention" data-pi-scope-host="ai" hidden>
+                    <div class="pi-card">
+                        <div class="pi-card-head">
+                            <strong data-i18n="console.ai.retentionTitle">挽留 AI 生成</strong>
+                            <span class="pi-muted" data-i18n="console.ai.retentionCharHint">为顶部「当前角色」批量写挽留草稿。上下文沿用主邀约的聊天 / 世界书设置。</span>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_retention_prompt_preset" data-i18n="console.retention.promptPreset">挽留生成类型</label>
+                            <select id="pi_retention_prompt_preset" class="text_pole">
+                                <optgroup id="pi_retention_prompt_builtin_group" data-i18n="[label]console.retention.promptBuiltinGroup" label="内置预设">
+                                    <option value="lastWhisper" data-i18n="console.retention.promptPreset.lastWhisper">最后低语</option>
+                                    <option value="unfinishedPromise" data-i18n="console.retention.promptPreset.unfinishedPromise">未完承诺</option>
+                                    <option value="softRefusal" data-i18n="console.retention.promptPreset.softRefusal">克制挽留</option>
+                                    <option value="jealousThread" data-i18n="console.retention.promptPreset.jealousThread">占有余温</option>
+                                    <option value="storyCliffhanger" data-i18n="console.retention.promptPreset.storyCliffhanger">剧情悬念</option>
+                                </optgroup>
+                                <optgroup id="pi_retention_prompt_custom_group" data-i18n="[label]console.retention.promptCustomGroup" label="我的模板"></optgroup>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_retention_prompt_body" data-i18n="console.retention.promptBody">挽留提示词正文（可编辑）</label>
+                            <textarea id="pi_retention_prompt_body" class="text_pole pi-textarea" rows="6" data-i18n-placeholder="console.retention.promptBodyPlaceholder" placeholder="可直接修改挽留提示词。{char} 会被替换成角色名，{count} 会被替换成生成条数。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_retention_reset_prompt" type="button" class="menu_button" data-i18n="console.retention.resetPrompt">还原内置预设</button>
+                                <button id="pi_retention_save_template" type="button" class="menu_button" data-i18n="console.retention.saveTemplate">保存为我的模板</button>
+                                <button id="pi_retention_delete_template" type="button" class="menu_button" data-i18n="console.retention.deleteTemplate">删除当前模板</button>
+                            </div>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_retention_batch_count" data-i18n="console.retention.batchCount">批量生成条数</label>
+                            <input id="pi_retention_batch_count" type="number" min="3" max="30" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_retention_ai_prompt" data-i18n="console.retention.aiPrompt">补充生成要求</label>
+                            <textarea id="pi_retention_ai_prompt" class="text_pole pi-textarea" rows="5" data-i18n-placeholder="console.retention.aiPromptPlaceholder" placeholder="补充挽留的力度、关系阶段、想避开的表达。可以用 {char} 代表角色名。"></textarea>
+                        </div>
+                        <div class="pi-actions-row pi-actions-row--compact">
+                            <span class="pi-muted" data-i18n="console.retention.contextNote">挽留生成会沿用主邀约的聊天记录和世界书上下文。</span>
+                            <button id="pi_retention_open_context" type="button" class="menu_button" data-i18n="console.retention.openContext">去主邀约调整上下文</button>
+                        </div>
+                        <div class="pi-actions-row">
+                            <button id="pi_retention_ai_generate_batch" type="button" class="menu_button" data-i18n="console.retention.generateBatch">AI 批量生成挽留草稿</button>
+                            <button id="pi_retention_ai_append_generated" type="button" class="menu_button" data-i18n="console.retention.appendAll">全部加入挽留池</button>
+                            <button id="pi_retention_ai_draft_clear" type="button" class="menu_button" data-i18n="console.retention.clearDrafts">清空草稿</button>
+                            <span id="pi_retention_ai_token_estimate" class="pi-token-estimate"></span>
+                        </div>
+                        <div class="pi-field">
+                            <label data-i18n="console.retention.generatedDraft">AI 挽留草稿</label>
+                            <small class="pi-muted" data-i18n="console.retention.draftHint">点 + 把单条加入挽留池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
+                            <span id="pi_retention_ai_draft_count" class="pi-muted"></span>
+                            <div id="pi_retention_ai_draft_list" class="pi-draft-list" role="list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 4: 外观（合并风格 + CSS） -->
+            <section class="pi-page" data-pi-page="appearance">
+                <details id="pi_mini_preview_details" class="pi-mini-preview-bar" open>
+                    <summary class="pi-mini-preview-summary">
+                        <span data-i18n="console.appearance.miniPreviewLabel">实时预览</span>
+                        <select id="pi_mini_preview_mode" class="text_pole pi-mini-preview-mode" onclick="event.stopPropagation()">
+                            <option value="bubble" data-i18n="console.style.mode.bubble">气泡</option>
+                            <option value="banner" data-i18n="console.style.mode.banner">横幅</option>
+                            <option value="barrage" data-i18n="console.style.mode.barrage">弹幕</option>
+                        </select>
+                        <span class="pi-muted pi-mini-preview-hint" data-i18n="console.appearance.miniPreviewToggleHint">点击此栏收起 / 展开</span>
+                    </summary>
+                    <div id="pi_mini_preview" class="pi-mini-preview"></div>
+                </details>
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.appearance.combinedTitle">外观</strong>
+                        <span class="pi-muted" data-i18n="console.appearance.combinedNote">展示样式、颜色、动效、自定义 CSS 全在这里。</span>
+                    </div>
+
+                    <div class="pi-section-title" data-i18n="console.appearance.layoutSection">布局</div>
+                    <div class="pi-field">
+                        <label for="pi_presentation_mode" data-i18n="console.style.mode">展示方式</label>
+                        <select id="pi_presentation_mode" class="text_pole">
+                            <option value="barrage" data-i18n="console.style.mode.barrage">弹幕</option>
+                            <option value="bubble" data-i18n="console.style.mode.bubble">气泡</option>
+                            <option value="banner" data-i18n="console.style.mode.banner">横幅</option>
+                        </select>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_cover_fit" data-i18n="console.style.coverFit">封面填充方式</label>
+                        <select id="pi_cover_fit" class="text_pole">
+                            <option value="contain" data-i18n="console.style.coverFit.contain">完整显示（contain，可能上下有黑边）</option>
+                            <option value="cover" data-i18n="console.style.coverFit.cover">填满裁切（cover，居中）</option>
+                            <option value="cover-zoom" data-i18n="console.style.coverFit.coverZoom">填满裁切（cover，顶部优先 / 保头）</option>
+                        </select>
+                        <small class="pi-muted" data-i18n="console.style.coverFitNote">电脑端用 contain 会让图被缩小、周围被 blur 背景晕开看着模糊。cover 系列裁去边角换更清晰画面。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label data-i18n="console.style.bubblePosition">气泡位置（仅气泡模式）</label>
+                        <div id="pi_bubble_position_grid" class="pi-position-grid" role="radiogroup" aria-label="bubble position">
+                            <button type="button" class="pi-pos-cell" data-pi-pos="top-left" data-i18n="[title]console.style.bubblePosition.topLeft" title="左上">↖</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="top-center" data-i18n="[title]console.style.bubblePosition.topCenter" title="顶部居中">↑</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="top-right" data-i18n="[title]console.style.bubblePosition.topRight" title="右上">↗</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="center-left" data-i18n="[title]console.style.bubblePosition.centerLeft" title="左中">←</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="center" data-i18n="[title]console.style.bubblePosition.center" title="正中央">●</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="center-right" data-i18n="[title]console.style.bubblePosition.centerRight" title="右中">→</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="bottom-left" data-i18n="[title]console.style.bubblePosition.bottomLeft" title="左下">↙</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="bottom-center" data-i18n="[title]console.style.bubblePosition.bottomCenter" title="底部居中">↓</button>
+                            <button type="button" class="pi-pos-cell" data-pi-pos="bottom-right" data-i18n="[title]console.style.bubblePosition.bottomRight" title="右下">↘</button>
+                        </div>
+                        <select id="pi_bubble_position" class="text_pole pi-hidden-select" aria-hidden="true" tabindex="-1">
+                            <option value="top-left">↖</option>
+                            <option value="top-center">↑</option>
+                            <option value="top-right">↗</option>
+                            <option value="center-left">←</option>
+                            <option value="center">●</option>
+                            <option value="center-right">→</option>
+                            <option value="bottom-left">↙</option>
+                            <option value="bottom-center">↓</option>
+                            <option value="bottom-right">↘</option>
+                        </select>
+                        <small class="pi-muted" data-i18n="console.style.bubblePositionNote">点击 3×3 方位面板选位置；下面两个滑块可在选定位置基础上微调左右 / 上下。</small>
+                        <small class="pi-muted pi-warn-note" data-i18n="console.style.bubblePositionRatioWarn">⚠️ 电脑端卡片接近正方形（≈ 1:1），移动端是手机竖屏（≈ 9:19），两端比例不一样 — 同一个位置在两端的视觉效果会不同。建议在你主要用的端把位置调好，再用下面的 X/Y 微调滑块兼顾另一端。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_bubble_offset_x" data-i18n="console.style.bubbleOffsetX">气泡水平微调（%）</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_bubble_offset_x" type="range" min="-50" max="50" step="1">
+                            <input id="pi_bubble_offset_x_value" type="number" min="-50" max="50" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_bubble_offset_y" data-i18n="console.style.bubbleOffsetY">气泡垂直微调（%）</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_bubble_offset_y" type="range" min="-50" max="50" step="1">
+                            <input id="pi_bubble_offset_y_value" type="number" min="-50" max="50" step="1" class="text_pole pi-number">
+                        </div>
+                        <small class="pi-muted" data-i18n="console.style.bubbleOffsetNote">正数往右 / 往下，负数往左 / 往上。微调单位是卡片宽 / 高的百分比。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_bubble_shape" data-i18n="console.style.bubbleShape">气泡形状（仅气泡模式）</label>
+                        <select id="pi_bubble_shape" class="text_pole">
+                            <option value="pill" data-i18n="console.style.bubbleShape.pill">圆角对话框</option>
+                            <option value="cloud" data-i18n="console.style.bubbleShape.cloud">云朵气泡（卡通）</option>
+                            <option value="sticker" data-i18n="console.style.bubbleShape.sticker">便签贴纸（带胶带）</option>
+                            <option value="note" data-i18n="console.style.bubbleShape.note">黄色便签（折角）</option>
+                            <option value="frameless" data-i18n="console.style.bubbleShape.frameless">无框纯文字（靠描边）</option>
+                        </select>
+                        <small class="pi-muted" data-i18n="console.style.bubbleShapeNote">不同角色画风适合不同气泡。frameless 强烈建议配合"自适应文字配色"或描边使用。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_frame_width" data-i18n="console.style.frameWidth">文字层宽度</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_frame_width" type="range" min="120" max="1200" step="1">
+                            <input id="pi_frame_width_value" type="number" min="120" max="1200" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_frame_height" data-i18n="console.style.frameHeight">文字层高度</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_frame_height" type="range" min="40" max="600" step="1">
+                            <input id="pi_frame_height_value" type="number" min="40" max="600" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_barrage_duration" data-i18n="console.style.barrageDuration">弹幕持续时间（秒，仅弹幕模式）</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_barrage_duration" type="range" min="6" max="60" step="1">
+                            <input id="pi_barrage_duration_value" type="number" min="6" max="60" step="1" class="text_pole pi-number">
+                        </div>
+                        <small class="pi-muted" data-i18n="console.style.barrageDurationNote">数字越大飘得越慢，长文案推荐 30s 以上。</small>
+                    </div>
+
+                    <div class="pi-section-title" data-i18n="console.appearance.colorSection">颜色与文字</div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_auto_adapt_color" type="checkbox">
+                            <span data-i18n="console.style.autoAdaptColor">自适应文字配色（推荐）</span>
+                        </label>
+                        <small class="pi-muted" data-i18n="console.style.autoAdaptColorNote">打开后插件会读取角色图亮度，自动给文字 + 描边换协调色，无视下面手动设置。关闭则用下方颜色。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_text_font_size" data-i18n="console.style.textSize">字体大小</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_text_font_size" type="range" min="10" max="72" step="1">
+                            <input id="pi_text_font_size_value" type="number" min="10" max="72" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_text_color" data-i18n="console.style.textColor">字体颜色</label>
+                        <input id="pi_text_color" type="color" class="pi-color-input">
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_text_opacity" data-i18n="console.style.textOpacity">字体不透明度</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_text_opacity" type="range" min="0" max="100" step="1">
+                            <input id="pi_text_opacity_value" type="number" min="0" max="100" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_text_stroke_width" data-i18n="console.style.textStrokeWidth">字体描边宽度</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_text_stroke_width" type="range" min="0" max="4" step="0.5">
+                            <input id="pi_text_stroke_width_value" type="number" min="0" max="4" step="0.5" class="text_pole pi-number">
+                        </div>
+                        <small class="pi-muted" data-i18n="console.style.textStrokeNote">给字体加一圈描边，能在任何角色图上保持可读。建议 1-2px。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_text_stroke_color" data-i18n="console.style.textStrokeColor">描边颜色</label>
+                        <input id="pi_text_stroke_color" type="color" class="pi-color-input">
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_frame_color" data-i18n="console.style.frameColor">气泡/横幅颜色</label>
+                        <input id="pi_frame_color" type="color" class="pi-color-input">
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_frame_opacity" data-i18n="console.style.frameOpacity">气泡/横幅不透明度</label>
+                        <div class="pi-range-row pi-range-row--triple">
+                            <input id="pi_frame_opacity" type="range" min="0" max="100" step="1">
+                            <input id="pi_frame_opacity_value" type="number" min="0" max="100" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+
+                    <div class="pi-section-title" data-i18n="console.appearance.motionSection">动效</div>
+                    <div class="pi-field">
+                        <label for="pi_cover_effect" data-i18n="console.style.coverEffect">封面动效</label>
+                        <select id="pi_cover_effect" class="text_pole">
+                            <option value="breath" data-i18n="console.style.coverEffect.breath">呼吸（缓慢缩放）</option>
+                            <option value="float" data-i18n="console.style.coverEffect.float">漂浮（上下浮动）</option>
+                            <option value="glow" data-i18n="console.style.coverEffect.glow">微光（明暗变化）</option>
+                            <option value="parallax" data-i18n="console.style.coverEffect.parallax">视差（横向漂移）</option>
+                            <option value="static" data-i18n="console.style.coverEffect.static">静止</option>
+                        </select>
+                    </div>
+
+                    <details class="pi-foldable pi-foldable--advanced pi-foldable--featured" open>
+                        <summary data-i18n="console.appearance.advancedToggle">✨ 自己设计封面 — 自定义 CSS / AI 写 CSS</summary>
+                        <div class="pi-field">
+                            <label for="pi_css_template" data-i18n="console.appearance.templateLabel">CSS 模板</label>
+                            <div class="pi-pool-add-row">
+                                <select id="pi_css_template" class="text_pole">
+                                    <optgroup id="pi_css_template_builtin_group" data-i18n="[label]console.appearance.templateBuiltinGroup" label="内置模板">
+                                        <option value="blackWhite" data-i18n="console.appearance.template.blackWhite">黑白胶片</option>
+                                        <option value="neonBorder" data-i18n="console.appearance.template.neonBorder">霓虹光边</option>
+                                        <option value="vintage" data-i18n="console.appearance.template.vintage">复古暗调</option>
+                                        <option value="palace" data-i18n="console.appearance.template.palace">宫廷金边</option>
+                                        <option value="gothicShadow" data-i18n="console.appearance.template.gothicShadow">暗黑哥特</option>
+                                        <option value="softGlow" data-i18n="console.appearance.template.softGlow">柔光晕染</option>
+                                        <option value="comicPanel" data-i18n="console.appearance.template.comicPanel">漫画分镜</option>
+                                        <option value="cyberDream" data-i18n="console.appearance.template.cyberDream">赛博梦境</option>
+                                    </optgroup>
+                                    <optgroup id="pi_css_template_custom_group" data-i18n="[label]console.appearance.templateCustomGroup" label="我的模板"></optgroup>
+                                </select>
+                                <button id="pi_css_template_apply" type="button" class="menu_button" data-i18n="console.appearance.templateApply">载入</button>
+                            </div>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_css_template_save" type="button" class="menu_button" data-i18n="console.appearance.templateSave">保存当前 CSS 为模板</button>
+                                <button id="pi_css_template_delete" type="button" class="menu_button" data-i18n="console.appearance.templateDelete">删除当前模板</button>
+                            </div>
+                            <small class="pi-muted" data-i18n="console.appearance.templateNote">载入会覆盖当前 CSS 内容。保存功能可把现在的 CSS 命名后存进"我的模板"，下次直接切换。</small>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_custom_css" data-i18n="console.appearance.customCss">自定义 CSS</label>
+                            <textarea id="pi_custom_css" class="text_pole pi-textarea pi-textarea--code" rows="14" data-i18n-placeholder="console.appearance.customCssPlaceholder" placeholder="/* 例如：把封面改成黑白滤镜 */&#10;.pi-invitation-card .pi-invitation-cover {&#10;    filter: grayscale(0.4) contrast(1.05);&#10;}"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_css_clear" type="button" class="menu_button" data-i18n="console.appearance.clearCss">一键清空 CSS</button>
+                                <span class="pi-muted" data-i18n="console.appearance.clearCssNote">清空后恢复初始默认外观。</span>
+                            </div>
+                            <small class="pi-muted" data-i18n="console.appearance.customCssNote">改完会自动注入到页面 &lt;style id="pi-custom-style"&gt;。</small>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_css_ai_brief" data-i18n="console.appearance.aiBrief">AI 写 CSS — 描述你想要的风格</label>
+                            <textarea id="pi_css_ai_brief" class="text_pole pi-textarea pi-textarea--small" rows="4" data-i18n-placeholder="console.appearance.aiBriefPlaceholder" placeholder="例如：把整张封面调成冷色调蓝紫色霓虹边框，文字加点发光效果，气泡用半透明深蓝。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_css_ai_generate" type="button" class="menu_button" data-i18n="console.appearance.aiGenerate">让 AI 写 CSS</button>
+                                <span id="pi_css_ai_status" class="pi-muted"></span>
+                            </div>
+                            <small class="pi-muted" data-i18n="console.appearance.aiNote">插件会自动把页面里能 hook 的节点信息告诉 AI，让它输出对应 CSS 后覆盖到上面。可继续手动微调。</small>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <!-- Tab 5: 运行控制 -->
+            <section class="pi-page" data-pi-page="control">
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.control.title">运行控制</strong>
+                        <span class="pi-muted" data-i18n="console.control.note">触发规则、全局开关、实时预览。</span>
+                    </div>
+                    <div class="pi-muted pi-control-hint" data-i18n="console.control.globalNote">全局总开关 / 菜单入口 / 主页自动弹出，仍在 SillyTavern 扩展设置面板里管理（避免重复维护）。</div>
+                </div>
+
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.control.homepageRulesTitle">主页弹出规则</strong>
+                    </div>
+                    <div class="pi-home-rule-grid">
+                        <div class="pi-field">
+                            <label for="pi_homepage_trigger_mode" data-i18n="console.pool.homepageTriggerMode">主页弹出逻辑</label>
+                            <select id="pi_homepage_trigger_mode" class="text_pole">
+                                <option value="session" data-i18n="console.pool.trigger.session">每个会话一次</option>
+                                <option value="cooldown" data-i18n="console.pool.trigger.cooldown">冷却后再弹</option>
+                                <option value="everyHome" data-i18n="console.pool.trigger.everyHome">每次回到主页</option>
+                                <option value="manual" data-i18n="console.pool.trigger.manual">只手动测试</option>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_homepage_cooldown_minutes" data-i18n="console.pool.cooldownMinutes">冷却分钟</label>
+                            <input id="pi_homepage_cooldown_minutes" type="number" min="1" max="10080" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.control.continueTitle">拒绝后继续随机</strong>
+                        <span class="pi-muted" data-i18n="console.control.continueNote">拒绝当前邀约后自动随机下一个角色，本轮已展示的不重复抽。</span>
+                    </div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_continue_on_dismiss" type="checkbox">
+                            <span data-i18n="console.control.continueOnDismiss">拒绝后继续随机</span>
+                        </label>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_continue_pick_limit" data-i18n="console.control.continuePickLimit">单轮最多连续随机次数</label>
+                        <input id="pi_continue_pick_limit" type="number" min="1" max="10" step="1" class="text_pole pi-number">
+                        <small class="pi-muted" data-i18n="console.control.continuePickLimitNote">达到次数 / 池里没新角色 / 接受邀约时自动结束本轮。</small>
+                    </div>
+                </div>
+
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.preview.title">实时预览</strong>
+                        <span class="pi-muted" data-i18n="console.preview.note">预览角色封面上的文字效果。</span>
+                    </div>
+                    <div id="pi_preview_summary" class="pi-preview-summary"></div>
+                    <button id="pi_test_invite" type="button" class="menu_button pi-test-button" data-i18n="console.preview.testInvite">测试随机邀约</button>
+                </div>
+            </section>
+        </div>
+    </div>
+</dialog>
