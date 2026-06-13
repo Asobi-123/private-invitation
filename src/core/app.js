@@ -1268,16 +1268,13 @@ function formatDisplayDate(timestamp) {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-function normalizeLastChatSnapshot(value, options = {}) {
+function normalizeLastChatSnapshot(value) {
     if (!value || typeof value !== 'object' || !value.key) {
         return null;
     }
     const seenAt = parseTimestamp(value.seenAt);
     const leftAt = parseTimestamp(value.leftAt);
-    if (!leftAt && !options.allowActive) {
-        return null;
-    }
-    if (!leftAt && !seenAt) {
+    if (!leftAt) {
         return null;
     }
     return {
@@ -1288,26 +1285,13 @@ function normalizeLastChatSnapshot(value, options = {}) {
         avatar: String(value.avatar || ''),
         chatId: String(value.chatId || ''),
         seenAt: seenAt || leftAt,
-        leftAt: leftAt || 0,
+        leftAt,
     };
 }
 
-function readStoredLastChatSnapshot(options = {}) {
+function clearStoredLastChatSnapshot() {
     try {
-        return normalizeLastChatSnapshot(JSON.parse(sessionStorage.getItem(lastChatSnapshotStorageKey) || 'null'), options);
-    } catch {
-        return null;
-    }
-}
-
-function writeStoredLastChatSnapshot(snapshot, options = {}) {
-    const normalized = normalizeLastChatSnapshot(snapshot, options);
-    try {
-        if (normalized) {
-            sessionStorage.setItem(lastChatSnapshotStorageKey, JSON.stringify(normalized));
-        } else {
-            sessionStorage.removeItem(lastChatSnapshotStorageKey);
-        }
+        sessionStorage.removeItem(lastChatSnapshotStorageKey);
     } catch {
         // Storage can be unavailable in some embedded/private contexts; runtime state still works.
     }
@@ -1329,7 +1313,7 @@ function rememberActiveChatCharacter(characterInfo, context = getContext?.()) {
     };
     state.activeChatCharacter = snapshot;
     state.lastChatCharacter = snapshot;
-    writeStoredLastChatSnapshot(snapshot, { allowActive: true });
+    clearStoredLastChatSnapshot();
 }
 
 function finalizeActiveChatDeparture(leftAt = Date.now()) {
@@ -1340,7 +1324,6 @@ function finalizeActiveChatDeparture(leftAt = Date.now()) {
         ...state.activeChatCharacter,
         leftAt,
     };
-    writeStoredLastChatSnapshot(state.lastChatCharacter);
     state.activeChatCharacter = null;
     return state.lastChatCharacter;
 }
@@ -3204,6 +3187,10 @@ async function acceptInvitation(characterInfo, modeOrRetention = 'primary') {
     state.invitationFromConsoleTest = false;
     state.shownThisRound.clear();
     state.continueCount = 0;
+    state.homepageInviteShown = false;
+    state.wasHomepage = false;
+    state.homepageStableSince = 0;
+    state.homepageInvitePending = false;
     closeActiveInvitation();
     if (mode === 'anger' || settings.angerResetOnAccept) {
         setRejectCount(characterInfo, 0);
@@ -3779,12 +3766,7 @@ function getJealousyDepartureContext(now = new Date()) {
     if (homepage) {
         finalizeActiveChatDeparture(now.getTime());
     }
-    let last = normalizeLastChatSnapshot(state.lastChatCharacter) || readStoredLastChatSnapshot({ allowActive: homepage });
-    if (last?.key && !last.leftAt && homepage) {
-        last = { ...last, leftAt: now.getTime() };
-        state.lastChatCharacter = last;
-        writeStoredLastChatSnapshot(last);
-    }
+    const last = normalizeLastChatSnapshot(state.lastChatCharacter);
     if (!last?.key) {
         return null;
     }
@@ -3796,7 +3778,7 @@ function getJealousyDepartureContext(now = new Date()) {
     const elapsedMs = now.getTime() - leftAt;
     const windowMs = settings.jealousyWindowMinutes * 60 * 1000;
     if (elapsedMs < 0 || elapsedMs > windowMs) {
-        writeStoredLastChatSnapshot(null);
+        clearStoredLastChatSnapshot();
         return null;
     }
     return {
@@ -7558,6 +7540,7 @@ async function init() {
 
     state.initialized = true;
     ensureSettings();
+    clearStoredLastChatSnapshot();
     const tryMount = async () => {
         await mountTemplates();
         if (!state.menuItem || !state.settingsPanel || !state.overlay) {
