@@ -206,6 +206,78 @@
                         <div id="pi_anger_pool_list" class="pi-chip-list"></div>
                     </div>
                 </details>
+
+                <!-- 吃醋文案池 -->
+                <details class="pi-card pi-card--foldable">
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.jealousyPoolTitle">吃醋文案池</strong>
+                        <span class="pi-muted" data-i18n="console.copy.jealousyPoolNote">从另一个角色聊天回主页后，当前角色被抽中时可触发。</span>
+                    </summary>
+                    <div class="pi-field">
+                        <label for="pi_character_jealousy_label" data-i18n="console.jealousy.characterLabel">本角色吃醋称呼</label>
+                        <input id="pi_character_jealousy_label" type="text" class="text_pole" data-i18n-placeholder="console.jealousy.characterLabelPlaceholder" placeholder="可选，例如：那个女人 / 那个人 / 前辈">
+                        <small class="pi-muted" data-i18n="console.jealousy.characterLabelNote">用于别人提到这个角色时的 {lastChar}。留空则用角色名。</small>
+                    </div>
+                    <div class="pi-actions-row pi-actions-row--compact">
+                        <button id="pi_jealousy_test" type="button" class="menu_button" data-i18n="console.jealousy.testButton">测试吃醋邀约</button>
+                    </div>
+                    <div id="pi_jealousy_count" class="pi-muted"></div>
+                    <div class="pi-field">
+                        <div class="pi-pool-add-row">
+                            <input id="pi_jealousy_pool_input" type="text" class="text_pole" data-i18n-placeholder="console.jealousy.poolInputPlaceholder" placeholder="输入一条吃醋文案，回车或按按钮添加">
+                            <button id="pi_jealousy_pool_add" type="button" class="menu_button" data-i18n="console.jealousy.poolAdd">添加</button>
+                        </div>
+                        <input id="pi_jealousy_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.jealousy.poolSearch" placeholder="在吃醋池中搜索">
+                        <small class="pi-muted" data-i18n="console.jealousy.poolNote">支持 {char}、{lastChar}、{lastChat}、{minutesSinceLastChat} 和时间变量。</small>
+                        <div id="pi_jealousy_pool_list" class="pi-chip-list"></div>
+                    </div>
+                </details>
+
+                <!-- 生日 / 特殊日期文案池 -->
+                <details class="pi-card pi-card--foldable">
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.birthdayPoolTitle">生日 / 特殊日期文案池</strong>
+                        <span class="pi-muted" data-i18n="console.copy.birthdayPoolNote">命中特殊日期时触发；同一事件当天成功展示后不再重复触发。</span>
+                    </summary>
+                    <div class="pi-field">
+                        <label for="pi_character_birthday" data-i18n="console.birthday.characterBirthday">本角色生日</label>
+                        <input id="pi_character_birthday" type="text" class="text_pole" data-i18n-placeholder="console.birthday.characterBirthdayPlaceholder" placeholder="MM-DD，例如 06-12">
+                    </div>
+                    <div class="pi-actions-row pi-actions-row--compact">
+                        <button id="pi_birthday_test" type="button" class="menu_button" data-i18n="console.birthday.testButton">测试生日邀约</button>
+                    </div>
+                    <div id="pi_birthday_count" class="pi-muted"></div>
+                    <div class="pi-field">
+                        <div class="pi-pool-add-row">
+                            <input id="pi_birthday_pool_input" type="text" class="text_pole" data-i18n-placeholder="console.birthday.poolInputPlaceholder" placeholder="输入一条生日 / 日期文案，回车或按按钮添加">
+                            <button id="pi_birthday_pool_add" type="button" class="menu_button" data-i18n="console.birthday.poolAdd">添加</button>
+                        </div>
+                        <input id="pi_birthday_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.birthday.poolSearch" placeholder="在生日池中搜索">
+                        <small class="pi-muted" data-i18n="console.birthday.poolNote">支持 {todayEvent}、{daysUntilBirthday} 和所有时间变量。池为空时回退主邀约文案。</small>
+                        <div id="pi_birthday_pool_list" class="pi-chip-list"></div>
+                    </div>
+                </details>
+
+                <!-- 久别重逢文案池 -->
+                <details class="pi-card pi-card--foldable">
+                    <summary class="pi-card-summary">
+                        <strong data-i18n="console.copy.reunionPoolTitle">久别重逢文案池</strong>
+                        <span class="pi-muted" data-i18n="console.copy.reunionPoolNote">角色被随机抽中后，如果未聊天时长达到阈值，触发 SSR 金光形态。</span>
+                    </summary>
+                    <div class="pi-actions-row pi-actions-row--compact">
+                        <button id="pi_reunion_test" type="button" class="menu_button" data-i18n="console.reunion.testButton">测试久别重逢邀约</button>
+                    </div>
+                    <div id="pi_reunion_count" class="pi-muted"></div>
+                    <div class="pi-field">
+                        <div class="pi-pool-add-row">
+                            <input id="pi_reunion_pool_input" type="text" class="text_pole" data-i18n-placeholder="console.reunion.poolInputPlaceholder" placeholder="输入一条久别重逢文案，回车或按按钮添加">
+                            <button id="pi_reunion_pool_add" type="button" class="menu_button" data-i18n="console.reunion.poolAdd">添加</button>
+                        </div>
+                        <input id="pi_reunion_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.reunion.poolSearch" placeholder="在久别重逢池中搜索">
+                        <small class="pi-muted" data-i18n="console.reunion.poolNote">支持 {daysSinceLastChat}、{lastChatDate}、{reunionTier} 和时间变量。</small>
+                        <div id="pi_reunion_pool_list" class="pi-chip-list"></div>
+                    </div>
+                </details>
             </section>
 
             <!-- Tab 3: AI 生成 -->
@@ -792,6 +864,93 @@
                         <div class="pi-field">
                             <label for="pi_homepage_cooldown_minutes" data-i18n="console.pool.cooldownMinutes">冷却分钟</label>
                             <input id="pi_homepage_cooldown_minutes" type="number" min="1" max="10080" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.control.jealousyTitle">吃醋 / 修罗场</strong>
+                        <span class="pi-muted" data-i18n="console.control.jealousyNote">只在从其他角色聊天回主页后的短时间窗口内判定。</span>
+                    </div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_jealousy_enabled" type="checkbox">
+                            <span data-i18n="console.control.jealousyEnabled">启用吃醋模式</span>
+                        </label>
+                    </div>
+                    <div class="pi-home-rule-grid">
+                        <div class="pi-field">
+                            <label for="pi_jealousy_chance" data-i18n="console.control.jealousyChance">触发概率 %</label>
+                            <input id="pi_jealousy_chance" type="number" min="0" max="100" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_jealousy_window_minutes" data-i18n="console.control.jealousyWindowMinutes">离开上个聊天后的有效分钟</label>
+                            <input id="pi_jealousy_window_minutes" type="number" min="1" max="1440" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.control.birthdayTitle">时间 / 特殊日期</strong>
+                        <span class="pi-muted" data-i18n="console.control.birthdayNote">所有文案池都可以使用时间变量。</span>
+                    </div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_birthday_enabled" type="checkbox">
+                            <span data-i18n="console.control.birthdayEnabled">启用生日 / 特殊日期模式</span>
+                        </label>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_user_birthday" data-i18n="console.control.userBirthday">用户生日</label>
+                        <input id="pi_user_birthday" type="text" class="text_pole" data-i18n-placeholder="console.control.monthDayPlaceholder" placeholder="MM-DD，例如 06-12">
+                    </div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_builtin_date_events_enabled" type="checkbox">
+                            <span data-i18n="console.control.builtinDateEventsEnabled">启用内置公历节日</span>
+                        </label>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_custom_date_events" data-i18n="console.control.customDateEvents">自定义特殊日期</label>
+                        <textarea id="pi_custom_date_events" class="text_pole pi-textarea pi-textarea--small" rows="4" data-i18n-placeholder="console.control.customDateEventsPlaceholder" placeholder="每行一个：MM-DD 名称"></textarea>
+                        <small class="pi-muted" data-i18n="console.control.timeVariableNote">变量：{time}、{hour}、{weekday}、{date}、{period}、{todayEvent}、{daysUntilBirthday}。</small>
+                    </div>
+                </div>
+
+                <div class="pi-card">
+                    <div class="pi-card-head">
+                        <strong data-i18n="console.control.reunionTitle">久别重逢 SSR</strong>
+                        <span class="pi-muted" data-i18n="console.control.reunionNote">只在角色已经被随机抽中后检查未聊天时长。</span>
+                    </div>
+                    <div class="pi-field">
+                        <label class="pi-switch">
+                            <input id="pi_reunion_enabled" type="checkbox">
+                            <span data-i18n="console.control.reunionEnabled">启用久别重逢模式</span>
+                        </label>
+                    </div>
+                    <div class="pi-home-rule-grid">
+                        <div class="pi-field">
+                            <label for="pi_reunion_threshold_days" data-i18n="console.control.reunionThresholdDays">SSR 阈值天数</label>
+                            <input id="pi_reunion_threshold_days" type="number" min="1" max="3650" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_reunion_extreme_threshold_days" data-i18n="console.control.reunionExtremeThresholdDays">EX 阈值天数</label>
+                            <input id="pi_reunion_extreme_threshold_days" type="number" min="1" max="3650" step="1" class="text_pole pi-number">
+                        </div>
+                    </div>
+                    <div class="pi-home-rule-grid">
+                        <div class="pi-field">
+                            <label for="pi_reunion_no_chat_policy" data-i18n="console.control.reunionNoChatPolicy">从未聊天角色</label>
+                            <select id="pi_reunion_no_chat_policy" class="text_pole">
+                                <option value="skip" data-i18n="console.control.reunionNoChatPolicy.skip">不触发</option>
+                                <option value="trigger" data-i18n="console.control.reunionNoChatPolicy.trigger">按 EX 触发</option>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_reunion_visual_intensity" data-i18n="console.control.reunionVisualIntensity">金光强度</label>
+                            <input id="pi_reunion_visual_intensity" type="number" min="0" max="100" step="1" class="text_pole pi-number">
                         </div>
                     </div>
                 </div>

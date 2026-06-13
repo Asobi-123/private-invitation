@@ -30,6 +30,12 @@ Representative shape:
   "retentionDrafts": {},
   "angerMessages": {},
   "angerDrafts": {},
+  "jealousyMessages": {},
+  "birthdayMessages": {},
+  "reunionMessages": {},
+  "characterJealousyLabels": {},
+  "characterBirthdays": {},
+  "dateEventConsumed": {},
   "rejectCounts": {},
   "characterChatFiles": {},
   "selectedWorldNames": [],
@@ -57,6 +63,18 @@ Representative shape:
   "angerResetOnAccept": true,
   "angerAccentColor": "#c2415a",
   "angerIntensity": "restrained",
+  "jealousyEnabled": false,
+  "jealousyChance": 45,
+  "jealousyWindowMinutes": 10,
+  "birthdayEnabled": true,
+  "userBirthday": "",
+  "customDateEvents": "",
+  "builtinDateEventsEnabled": false,
+  "reunionEnabled": false,
+  "reunionThresholdDays": 30,
+  "reunionExtremeThresholdDays": 180,
+  "reunionNoChatPolicy": "skip",
+  "reunionVisualIntensity": 70,
   "aiUseChatContext": false,
   "aiUseWorldInfo": false,
   "chatFloorStart": 0,
@@ -108,6 +126,41 @@ Representative shape:
     "One more line after dismiss."
   ]
 }
+```
+
+Contextual mode pools mirror the same per-character shape:
+
+- `jealousyMessages`: lines used when the selected character reacts to the last chat character.
+- `birthdayMessages`: lines used on user birthday, character birthday, built-in holidays, or custom dates. If empty, birthday mode falls back to `characterMessages`.
+- `reunionMessages`: lines used when a randomly drawn character has not been chatted with for at least `reunionThresholdDays`.
+
+Per-character contextual settings:
+
+- `characterJealousyLabels`: optional display label used as `{lastChar}` when another character refers to this character.
+- `characterBirthdays`: per-character `MM-DD` birthday map.
+
+Date consumption:
+
+```json
+{
+  "birthdayMode": "2026-06-13",
+  "characterBirthday:character-key": "2026-06-13"
+}
+```
+
+`dateEventConsumed.birthdayMode` is the date-level guard. Once birthday mode has successfully shown on a date, all birthday / special-date checks are skipped for the rest of that local day.
+
+Contextual mode trigger settings:
+
+- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`
+- `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`
+- `reunionEnabled`, `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
+
+`customDateEvents` is plain text, one event per line:
+
+```text
+06-12 Anniversary
+12-31 Countdown
 ```
 
 ## Draft Pools
@@ -279,4 +332,3 @@ These fields live on the in-memory `state` object during AI batch generation; th
 - `state.aiBatchAbortRequested` — `true` once the user clicks the morphed cancel button; the running batch loop reads it before each new batch
 - `state.aiBatchActiveKind` — `'dialogue'` / `'retention'` / `'anger'` while a batch run is in flight; used so a second click on the same button is treated as a cancel rather than a re-start
 - `state.aiBatchProgress` — `{ current, total, phase }` for the most recent `onProgress` event so the button label can show `(X/Y)` and the cancel label remains accurate
-

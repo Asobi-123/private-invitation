@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-A SillyTavern extension that turns the homepage into a character-recall surface. It randomly surfaces characters you have selected, with full-cover artwork, custom lines, and optional retention / anger callbacks — bringing characters back into view instead of letting them slip out of mind.
+A SillyTavern extension that turns the homepage into a character-recall surface. It randomly surfaces characters you have selected, with full-cover artwork, custom lines, and optional retention, anger, jealousy, special-date, and reunion callbacks — bringing characters back into view instead of letting them slip out of mind.
 
 > The extension is for the moment your roleplay library grows past the point where you remember who you should be returning to.
 
@@ -32,6 +32,12 @@ A SillyTavern extension that turns the homepage into a character-recall surface.
 - Red-black rage visuals, countdown that auto-enters the chat
 - Independent anger copy pool and AI presets
 - Accepting any invitation resets the count (configurable)
+
+### Contextual callbacks
+- **Jealousy / triangle**: after returning home from character A, character B can react to the last-chat snapshot if drawn
+- **Time / special dates**: saved lines support variables like `{time}`, `{period}`, and `{todayEvent}`; birthday / special-date mode can use its own pool
+- **SSR reunion**: after a character is drawn, long chat absence can trigger a gold visual treatment and reunion lines
+- One popup uses exactly one form, so no combined copy pools are required; birthday mode is consumed for the local date after a successful display
 
 ### Visual customization
 - 8 built-in CSS templates (mono / neon border / vintage / palace / gothic shadow / soft glow / comic panel / cyber dream)
@@ -141,15 +147,18 @@ Tags with attributes match too — entering `div` also strips `<div class="x">..
 
 ---
 
-## Three Callback Forms
+## Callback Forms
 
 | Form | Trigger | Behavior |
 |---|---|---|
 | **Main invitation** | Homepage auto / manual | Standard callback, dismissible |
 | **Retention** | After dismissing main, by chance | Second callback; further dismiss closes |
 | **Anger** | Reject count reaches threshold (default 5) | Red-black rage form, countdown auto-enters chat |
+| **Birthday / special date** | Drawn character matches a current date event | Uses the special-date pool; does not repeat after successful display that day |
+| **SSR reunion** | Drawn character has not been chatted with for the configured days | Gold visual treatment and reunion pool |
+| **Jealousy / triangle** | Drawn character differs from the last-chat character and is within the time window | Uses last-chat variables |
 
-Each form has its own copy pool and its own AI draft generation.
+Main, retention, and anger have AI draft generation. Jealousy, birthday, and reunion use hand-written pools and fallbacks, so no combined copy generation is required.
 
 ---
 

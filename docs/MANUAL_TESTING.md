@@ -51,14 +51,17 @@ Steps:
 2. Select a current character.
 3. Add several main invitation lines.
 4. Add several retention lines.
-5. Delete one line from each pool.
-6. Reload SillyTavern and reopen the console.
+5. Add several anger, jealousy, birthday, and reunion lines.
+6. Set a per-character jealousy label and birthday.
+7. Delete one line from each pool.
+8. Reload SillyTavern and reopen the console.
 
 Expected:
 
 - Copy pools are stored per character.
-- Main and retention pools do not overwrite each other.
+- Main, retention, anger, jealousy, birthday, and reunion pools do not overwrite each other.
 - Chip lists render correctly.
+- Per-character jealousy label and birthday persist.
 - Reload preserves saved lines.
 
 ## 4. Shared API Draft Generation
@@ -179,6 +182,28 @@ Expected:
 - Enter switches to the selected character.
 - Dismiss closes or shows one retention prompt based on chance.
 
+## 8.1 Contextual Invitation Modes
+
+Steps:
+
+1. Keep at least two characters in the invitation pool.
+2. Save jealousy, birthday, and reunion lines for one test character.
+3. Enable jealousy mode, set chance to 100%, and set the window to at least 10 minutes.
+4. Open a different character chat, then return to the homepage and trigger an invitation for the test character.
+5. Set user birthday or the character birthday to today's `MM-DD`, then trigger the test character.
+6. Trigger birthday mode again on the same local date.
+7. Enable reunion mode, set `reunionThresholdDays` low enough to match an old chat, or use the manual reunion test button.
+8. Test the manual buttons for jealousy, birthday, and reunion from the Copy tab.
+
+Expected:
+
+- Jealousy mode only triggers when the last-chat character exists, is different, is within the configured time window, and chance passes.
+- Birthday mode wins over reunion / jealousy after anger, but only once per local date after successful display.
+- After birthday mode is consumed for the date, the same character can still enter reunion, jealousy, or primary mode.
+- Reunion mode only checks the already drawn character and does not change draw probability.
+- Reunion visual treatment shows a gold SSR-style effect without hiding actions or changing card size.
+- Contextual test buttons close back to the console and do not actually switch chats.
+
 ## 9. Appearance And Custom CSS
 
 Steps:
@@ -240,4 +265,3 @@ Before tagging a release:
 - i18n key parity passes.
 - Source and test directories are synced and `diff -qr` shows no differences.
 - There is no extra `extension/` directory.
-

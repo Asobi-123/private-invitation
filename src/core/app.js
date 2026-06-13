@@ -43,6 +43,16 @@ const angerPromptPresetKeys = [
 ];
 
 const angerIntensityKeys = ['restrained', 'direct', 'outburst'];
+const invitationModeKeys = ['primary', 'retention', 'anger', 'jealousy', 'birthday', 'reunion'];
+const reunionNoChatPolicyKeys = ['skip', 'trigger'];
+
+const builtinDateEvents = [
+    { key: 'holiday:01-01', date: '01-01', nameKey: 'invitation.event.newYear' },
+    { key: 'holiday:02-14', date: '02-14', nameKey: 'invitation.event.valentine' },
+    { key: 'holiday:12-24', date: '12-24', nameKey: 'invitation.event.christmasEve' },
+    { key: 'holiday:12-25', date: '12-25', nameKey: 'invitation.event.christmas' },
+    { key: 'holiday:12-31', date: '12-31', nameKey: 'invitation.event.newYearEve' },
+];
 
 const homepageTriggerModes = [
     'session',
@@ -367,6 +377,12 @@ const defaultSettings = {
     retentionDrafts: {},
     angerMessages: {},
     angerDrafts: {},
+    jealousyMessages: {},
+    birthdayMessages: {},
+    reunionMessages: {},
+    characterJealousyLabels: {},
+    characterBirthdays: {},
+    dateEventConsumed: {},
     rejectCounts: {},
     angerThreshold: 5,
     angerResetOnAccept: true,
@@ -379,6 +395,18 @@ const defaultSettings = {
     angerAiPrompt: '',
     angerBatchCount: 8,
     angerGeneratedText: '',
+    jealousyEnabled: false,
+    jealousyChance: 45,
+    jealousyWindowMinutes: 10,
+    birthdayEnabled: true,
+    userBirthday: '',
+    customDateEvents: '',
+    builtinDateEventsEnabled: false,
+    reunionEnabled: false,
+    reunionThresholdDays: 30,
+    reunionExtremeThresholdDays: 180,
+    reunionNoChatPolicy: 'skip',
+    reunionVisualIntensity: 70,
     characterChatFiles: {},
     selectedWorldNames: [],
     characterWorldNames: {},
@@ -591,6 +619,9 @@ const state = {
     appReady: false,
     appReadyAt: 0,
     chatFileCache: new Map(),
+    lastChatTimeCache: new Map(),
+    activeChatCharacter: null,
+    lastChatCharacter: null,
     invitationFromConsoleTest: false,
     aiBatchAbortRequested: false,
     aiBatchActiveKind: null,
@@ -923,6 +954,24 @@ function ensureSettings() {
     settings.angerDrafts = settings.angerDrafts && typeof settings.angerDrafts === 'object' && !Array.isArray(settings.angerDrafts)
         ? settings.angerDrafts
         : {};
+    settings.jealousyMessages = settings.jealousyMessages && typeof settings.jealousyMessages === 'object' && !Array.isArray(settings.jealousyMessages)
+        ? settings.jealousyMessages
+        : {};
+    settings.birthdayMessages = settings.birthdayMessages && typeof settings.birthdayMessages === 'object' && !Array.isArray(settings.birthdayMessages)
+        ? settings.birthdayMessages
+        : {};
+    settings.reunionMessages = settings.reunionMessages && typeof settings.reunionMessages === 'object' && !Array.isArray(settings.reunionMessages)
+        ? settings.reunionMessages
+        : {};
+    settings.characterJealousyLabels = settings.characterJealousyLabels && typeof settings.characterJealousyLabels === 'object' && !Array.isArray(settings.characterJealousyLabels)
+        ? settings.characterJealousyLabels
+        : {};
+    settings.characterBirthdays = settings.characterBirthdays && typeof settings.characterBirthdays === 'object' && !Array.isArray(settings.characterBirthdays)
+        ? settings.characterBirthdays
+        : {};
+    settings.dateEventConsumed = settings.dateEventConsumed && typeof settings.dateEventConsumed === 'object' && !Array.isArray(settings.dateEventConsumed)
+        ? settings.dateEventConsumed
+        : {};
     settings.rejectCounts = settings.rejectCounts && typeof settings.rejectCounts === 'object' && !Array.isArray(settings.rejectCounts)
         ? settings.rejectCounts
         : {};
@@ -939,6 +988,18 @@ function ensureSettings() {
     settings.angerAiPrompt = String(settings.angerAiPrompt || '');
     settings.angerBatchCount = clampNumber(settings.angerBatchCount, 3, 30, defaultSettings.angerBatchCount);
     settings.angerGeneratedText = String(settings.angerGeneratedText || '');
+    settings.jealousyEnabled = Boolean(settings.jealousyEnabled);
+    settings.jealousyChance = clampNumber(settings.jealousyChance, 0, 100, defaultSettings.jealousyChance);
+    settings.jealousyWindowMinutes = clampNumber(settings.jealousyWindowMinutes, 1, 1440, defaultSettings.jealousyWindowMinutes);
+    settings.birthdayEnabled = settings.birthdayEnabled !== false;
+    settings.userBirthday = String(settings.userBirthday || '');
+    settings.customDateEvents = String(settings.customDateEvents || '');
+    settings.builtinDateEventsEnabled = Boolean(settings.builtinDateEventsEnabled);
+    settings.reunionEnabled = Boolean(settings.reunionEnabled);
+    settings.reunionThresholdDays = clampNumber(settings.reunionThresholdDays, 1, 3650, defaultSettings.reunionThresholdDays);
+    settings.reunionExtremeThresholdDays = clampNumber(settings.reunionExtremeThresholdDays, settings.reunionThresholdDays, 3650, defaultSettings.reunionExtremeThresholdDays);
+    settings.reunionNoChatPolicy = reunionNoChatPolicyKeys.includes(settings.reunionNoChatPolicy) ? settings.reunionNoChatPolicy : defaultSettings.reunionNoChatPolicy;
+    settings.reunionVisualIntensity = clampNumber(settings.reunionVisualIntensity, 0, 100, defaultSettings.reunionVisualIntensity);
     settings.characterChatFiles = settings.characterChatFiles && typeof settings.characterChatFiles === 'object' && !Array.isArray(settings.characterChatFiles)
         ? settings.characterChatFiles
         : {};
@@ -1014,6 +1075,116 @@ function parsePoolList(text) {
         .filter(Boolean);
 }
 
+function pad2(value) {
+    return String(value).padStart(2, '0');
+}
+
+function formatLocalDateKey(date = new Date()) {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function formatMonthDay(date = new Date()) {
+    return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function normalizeMonthDay(value) {
+    const text = String(value || '').trim();
+    if (!text) {
+        return '';
+    }
+    const match = text.match(/^(\d{1,2})[-/.月](\d{1,2})(?:日)?$/);
+    if (!match) {
+        return '';
+    }
+    const month = Number(match[1]);
+    const day = Number(match[2]);
+    if (!Number.isInteger(month) || !Number.isInteger(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+        return '';
+    }
+    const test = new Date(2024, month - 1, day);
+    if (test.getMonth() !== month - 1 || test.getDate() !== day) {
+        return '';
+    }
+    return `${pad2(month)}-${pad2(day)}`;
+}
+
+function getPeriodLabel(date = new Date()) {
+    const hour = date.getHours();
+    if (hour < 5) return t('invitation.period.deepNight');
+    if (hour < 9) return t('invitation.period.morning');
+    if (hour < 12) return t('invitation.period.forenoon');
+    if (hour < 14) return t('invitation.period.noon');
+    if (hour < 18) return t('invitation.period.afternoon');
+    if (hour < 22) return t('invitation.period.evening');
+    return t('invitation.period.night');
+}
+
+function parseTimestamp(value) {
+    if (value === undefined || value === null || value === '') {
+        return 0;
+    }
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        return value;
+    }
+    const parsed = Date.parse(String(value));
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatDisplayDate(timestamp) {
+    const time = parseTimestamp(timestamp);
+    if (!time) {
+        return '';
+    }
+    const date = new Date(time);
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function getDaysBetween(fromMs, toMs = Date.now()) {
+    const start = parseTimestamp(fromMs);
+    const end = parseTimestamp(toMs);
+    if (!start || !end || end < start) {
+        return 0;
+    }
+    return Math.floor((end - start) / (24 * 60 * 60 * 1000));
+}
+
+function getDaysUntilMonthDay(monthDay, now = new Date()) {
+    const normalized = normalizeMonthDay(monthDay);
+    if (!normalized) {
+        return '';
+    }
+    const [month, day] = normalized.split('-').map(Number);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let target = new Date(now.getFullYear(), month - 1, day);
+    if (target < today) {
+        target = new Date(now.getFullYear() + 1, month - 1, day);
+    }
+    return Math.round((target - today) / (24 * 60 * 60 * 1000));
+}
+
+function parseCustomDateEvents(value) {
+    return String(value || '')
+        .split(/\r?\n/)
+        .map((line, index) => {
+            const trimmed = line.trim();
+            if (!trimmed) {
+                return null;
+            }
+            const match = trimmed.match(/^(\S+)\s+(.+)$/);
+            const date = normalizeMonthDay(match ? match[1] : trimmed);
+            const name = String(match ? match[2] : '').trim();
+            if (!date || !name) {
+                return null;
+            }
+            return {
+                key: `custom:${index}:${date}:${name}`,
+                date,
+                name,
+            };
+        })
+        .filter(Boolean);
+}
+
 function getCharacterKey(character, id) {
     return String(character?.avatar || character?.name || id);
 }
@@ -1053,6 +1224,11 @@ function getCharacterAvatarUrl(characterInfo) {
 function findCharacterByKey(key) {
     const normalizedKey = String(key || '');
     return getAvailableCharacters().find((characterInfo) => String(characterInfo.key) === normalizedKey) || null;
+}
+
+function findCharacterById(id) {
+    const normalizedId = String(id ?? '');
+    return getAvailableCharacters().find((characterInfo) => String(characterInfo.id) === normalizedId) || null;
 }
 
 function getSelectedCharacter() {
@@ -1467,6 +1643,9 @@ function clearDraft(characterInfo, kind) {
 function poolFieldFor(kind) {
     if (kind === 'retention') return 'retentionMessages';
     if (kind === 'anger') return 'angerMessages';
+    if (kind === 'jealousy') return 'jealousyMessages';
+    if (kind === 'birthday') return 'birthdayMessages';
+    if (kind === 'reunion') return 'reunionMessages';
     return 'characterMessages';
 }
 
@@ -1504,6 +1683,15 @@ function appendPoolLines(characterInfo, kind, newLines) {
         return;
     }
     setPoolLines(characterInfo, kind, [...lines, ...incoming]);
+}
+
+function getModePoolLabel(kind) {
+    if (kind === 'retention') return t('console.retention.poolName');
+    if (kind === 'anger') return t('console.anger.poolName');
+    if (kind === 'jealousy') return t('console.jealousy.poolName');
+    if (kind === 'birthday') return t('console.birthday.poolName');
+    if (kind === 'reunion') return t('console.reunion.poolName');
+    return t('console.dialogue.poolName');
 }
 
 function removePoolLineAt(characterInfo, kind, index) {
@@ -2202,6 +2390,83 @@ function renderAngerEditor(root = state.overlay || document) {
     renderDraftList(root, 'anger');
 }
 
+function updateModePoolCount(root = state.overlay || document, kind = 'dialogue') {
+    if (kind === 'dialogue') {
+        updateDialogueCount(root);
+        return;
+    }
+    if (kind === 'retention') {
+        updateRetentionCount(root);
+        return;
+    }
+    const count = root?.querySelector?.(`#pi_${kind}_count`);
+    if (!count) {
+        return;
+    }
+    const characterInfo = getSelectedCharacter();
+    const lines = characterInfo ? getPoolLines(characterInfo, kind) : [];
+    count.textContent = t('console.mode.savedCount', {
+        mode: getModePoolLabel(kind),
+        count: lines.length,
+    });
+}
+
+function refreshPoolEditor(root = state.overlay || document, kind = 'dialogue') {
+    renderPoolList(root, kind);
+    updateModePoolCount(root, kind);
+}
+
+function persistCharacterContextualSettings(root = state.overlay || document) {
+    const settings = ensureSettings();
+    const characterInfo = getSelectedCharacter();
+    if (!characterInfo?.key) {
+        return;
+    }
+
+    const jealousyLabel = root?.querySelector?.('#pi_character_jealousy_label');
+    if (jealousyLabel) {
+        const value = String(jealousyLabel.value || '').trim();
+        if (value) {
+            settings.characterJealousyLabels[characterInfo.key] = value;
+        } else {
+            delete settings.characterJealousyLabels[characterInfo.key];
+        }
+    }
+
+    const birthday = root?.querySelector?.('#pi_character_birthday');
+    if (birthday) {
+        const value = normalizeMonthDay(birthday.value);
+        if (value) {
+            settings.characterBirthdays[characterInfo.key] = value;
+            birthday.value = value;
+        } else if (!String(birthday.value || '').trim()) {
+            delete settings.characterBirthdays[characterInfo.key];
+        }
+    }
+}
+
+function renderContextualModeEditors(root = state.overlay || document) {
+    const settings = ensureSettings();
+    const characterInfo = getSelectedCharacter();
+    const jealousyLabel = root?.querySelector?.('#pi_character_jealousy_label');
+    const birthday = root?.querySelector?.('#pi_character_birthday');
+
+    if (jealousyLabel) {
+        jealousyLabel.value = characterInfo?.key ? String(settings.characterJealousyLabels?.[characterInfo.key] || '') : '';
+    }
+    if (birthday) {
+        birthday.value = characterInfo?.key ? String(settings.characterBirthdays?.[characterInfo.key] || '') : '';
+    }
+
+    ['jealousy', 'birthday', 'reunion'].forEach((kind) => {
+        const input = root?.querySelector?.(`${poolElementPrefixFor(kind)}_input`);
+        if (input) {
+            input.value = '';
+        }
+        refreshPoolEditor(root, kind);
+    });
+}
+
 function isConsoleOpen() {
     const overlay = state.overlay || document.querySelector('#pi_overlay');
     return Boolean(overlay?.open);
@@ -2303,32 +2568,18 @@ function buildPreviewMessageHtml(mode) {
 function normalizeInvitationMode(modeOrRetention) {
     if (modeOrRetention === true) return 'retention';
     if (modeOrRetention === false || modeOrRetention === undefined || modeOrRetention === null) return 'primary';
-    if (typeof modeOrRetention === 'string' && ['primary', 'retention', 'anger'].includes(modeOrRetention)) {
+    if (typeof modeOrRetention === 'string' && invitationModeKeys.includes(modeOrRetention)) {
         return modeOrRetention;
     }
     return 'primary';
 }
 
-function buildInvitationMessageHtml(characterInfo, modeOrRetention = false) {
+function buildInvitationMessageHtml(characterInfo, modeOrRetention = false, templateContext = {}) {
     const settings = ensureSettings();
     const mode = normalizeInvitationMode(modeOrRetention);
     const lineCount = settings.presentationMode === 'barrage' ? (settings.barrageLineCount ?? 3) : 1;
-    let savedMessages;
-    if (mode === 'anger') {
-        savedMessages = getAngerMessages(characterInfo);
-    } else if (mode === 'retention') {
-        savedMessages = getRetentionMessages(characterInfo);
-    } else {
-        savedMessages = getManualMessages(characterInfo);
-    }
-    let fallback;
-    if (mode === 'anger') {
-        fallback = getFallbackAngerMessage(characterInfo);
-    } else if (mode === 'retention') {
-        fallback = getFallbackRetentionMessage(characterInfo);
-    } else {
-        fallback = getFallbackMessage(characterInfo);
-    }
+    const savedMessages = getMessagesForMode(characterInfo, mode, templateContext);
+    const fallback = getFallbackMessageForMode(characterInfo, mode, templateContext);
     const source = savedMessages.length ? savedMessages : [fallback];
     const picked = getSampledLines(source, lineCount);
 
@@ -2432,23 +2683,34 @@ function applyAdaptiveColorsToDialog(dialog, characterInfo) {
     });
 }
 
-function createInvitationDialog(characterInfo, modeOrRetention = false) {
+function getInvitationKicker(mode) {
+    if (mode === 'anger') return t('invitation.angerKicker');
+    if (mode === 'retention') return t('invitation.retentionKicker');
+    if (mode === 'jealousy') return t('invitation.jealousyKicker');
+    if (mode === 'birthday') return t('invitation.birthdayKicker');
+    if (mode === 'reunion') return t('invitation.reunionKicker');
+    return t('invitation.kicker');
+}
+
+function createInvitationDialog(characterInfo, modeOrRetention = false, templateContext = {}) {
     const mode = normalizeInvitationMode(modeOrRetention);
     const retention = mode === 'retention';
     const anger = mode === 'anger';
+    const specialMode = mode !== 'primary' ? ` pi-invitation-dialog--${mode}` : '';
     const settings = resolveCharacterStyle(characterInfo);
     const globalSettings = ensureSettings();
     const dialog = document.createElement('dialog');
-    dialog.className = `pi-invitation-dialog pi-invitation-dialog--${settings.presentationMode}${anger ? ' pi-invitation-dialog--anger' : ''}`;
+    dialog.className = `pi-invitation-dialog pi-invitation-dialog--${settings.presentationMode}${specialMode}`;
     let styleVars = buildInvitationStyleVars(settings);
     if (anger) {
         styleVars += `;--pi-anger-accent:${globalSettings.angerAccentColor || '#c2415a'}`;
     }
+    if (mode === 'reunion') {
+        styleVars += `;--pi-reunion-intensity:${(globalSettings.reunionVisualIntensity ?? 70) / 100}`;
+    }
     dialog.style.cssText = styleVars;
 
-    const kickerText = anger
-        ? t('invitation.angerKicker')
-        : (retention ? t('invitation.retentionKicker') : t('invitation.kicker'));
+    const kickerText = getInvitationKicker(mode);
     const acceptText = anger
         ? t('invitation.angerEnter')
         : (retention ? t('invitation.acceptRetention') : t('invitation.accept'));
@@ -2489,7 +2751,7 @@ function createInvitationDialog(characterInfo, modeOrRetention = false) {
                 <div class="pi-invitation-kicker">${escapeHtml(kickerText)}</div>
                 <div class="pi-invitation-name">${escapeHtml(characterInfo.name)}</div>
                 <div class="pi-invitation-message pi-invitation-message--${settings.presentationMode}${anger ? ' pi-invitation-message--anger' : ''}">
-                    ${buildInvitationMessageHtml(characterInfo, mode)}
+                    ${buildInvitationMessageHtml(characterInfo, mode, templateContext)}
                 </div>${countdownHtml}${actionsHtml}
             </div>
         </div>
@@ -2519,7 +2781,7 @@ function createInvitationDialog(characterInfo, modeOrRetention = false) {
                 state.invitationFromConsoleTest = false;
                 stopAngerCountdown(dialog);
                 closeActiveInvitation();
-                notify('success', t('invitation.angerTestDone'));
+                notify('success', t('invitation.testDone'));
                 openConsole(state.activeTab || 'copy');
             }
             return;
@@ -2554,7 +2816,8 @@ async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()
     if (typeof options.shouldShow === 'function' && !options.shouldShow()) {
         return false;
     }
-    const dialog = createInvitationDialog(characterInfo, mode);
+    const templateContext = options.templateContext || {};
+    const dialog = createInvitationDialog(characterInfo, mode, templateContext);
     document.body.append(dialog);
     state.activeInvitation = dialog;
     applyAdaptiveColorsToDialog(dialog, characterInfo);
@@ -2569,6 +2832,10 @@ async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()
         dialog.setAttribute('open', '');
     }
 
+    if (mode === 'birthday' && templateContext.dateEvent && !state.invitationFromConsoleTest) {
+        consumeDateEvent(templateContext.dateEvent);
+    }
+
     return true;
 }
 
@@ -2577,7 +2844,7 @@ async function acceptInvitation(characterInfo, modeOrRetention = 'primary') {
         state.invitationFromConsoleTest = false;
         stopAngerCountdown(state.activeInvitation);
         closeActiveInvitation();
-        notify('success', t('invitation.angerTestDone'));
+        notify('success', t('invitation.testDone'));
         openConsole(state.activeTab || 'copy');
         return false;
     }
@@ -2760,7 +3027,7 @@ function isSillyTavernReadyForChatSwitch() {
     return true;
 }
 
-function maybeShowHomepageInvitation(force = false) {
+async function maybeShowHomepageInvitation(force = false) {
     const settings = ensureSettings();
     if (!settings.enabled || (!settings.autoOpenOnHome && !force)) {
         clearHomepageRetryTimer();
@@ -2802,14 +3069,18 @@ function maybeShowHomepageInvitation(force = false) {
     const angerCandidates = pool.filter((c) => shouldShowAngerMode(c));
     let characterInfo;
     let mode;
+    let templateContext = {};
     if (angerCandidates.length > 0) {
         characterInfo = pickRandom(angerCandidates);
         mode = 'anger';
     } else {
         characterInfo = pickRandom(pool);
-        mode = 'primary';
+        const resolved = await resolveInvitationModeAfterAnger(characterInfo);
+        mode = resolved.mode;
+        templateContext = resolved.templateContext;
     }
     showInvitation(characterInfo, mode, {
+        templateContext,
         shouldShow: () => force || (isHomepage() && !isConsoleOpen() && !state.activeInvitation && !state.homepageInviteShown),
     }).then((shown) => {
         if (shown) {
@@ -2869,43 +3140,111 @@ function applyPanelTheme(root = state.overlay || document) {
     modal?.setAttribute?.('data-pi-panel-theme', theme);
 }
 
-function applyTemplate(text, characterInfo) {
-    return String(text || '')
-        .replaceAll('{char}', characterInfo?.name || '')
-        .replaceAll('{{char}}', characterInfo?.name || '');
-}
-
-function getSavedMessagesForCharacter(characterInfo) {
+function buildBaseTemplateContext(characterInfo, extra = {}) {
     const settings = ensureSettings();
-    return parsePoolList(settings.characterMessages?.[characterInfo?.key] || '');
+    const now = extra.now instanceof Date ? extra.now : new Date();
+    const hour = now.getHours();
+    const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(now);
+    const characterBirthday = characterInfo?.key ? settings.characterBirthdays?.[characterInfo.key] : '';
+    const birthday = characterBirthday || settings.userBirthday;
+    const base = {
+        char: characterInfo?.name || '',
+        charLabel: characterInfo ? getCharacterJealousyLabel(characterInfo) : '',
+        time: `${pad2(hour)}:${pad2(now.getMinutes())}`,
+        hour: String(hour),
+        weekday,
+        date: formatLocalDateKey(now),
+        period: getPeriodLabel(now),
+        todayEvent: '',
+        daysUntilBirthday: getDaysUntilMonthDay(birthday, now),
+        lastChar: '',
+        lastChat: '',
+        minutesSinceLastChat: '',
+        daysSinceLastChat: '',
+        lastChatDate: '',
+        reunionTier: '',
+        ...extra,
+    };
+    delete base.now;
+    return base;
 }
 
-function getSavedRetentionMessagesForCharacter(characterInfo) {
+function applyTemplate(text, characterInfo, templateContext = {}) {
+    const values = buildBaseTemplateContext(characterInfo, templateContext);
+    let output = String(text || '');
+    for (const [key, value] of Object.entries(values)) {
+        if (value === undefined || value === null || typeof value === 'object') {
+            continue;
+        }
+        output = output
+            .replaceAll(`{${key}}`, String(value))
+            .replaceAll(`{{${key}}}`, String(value));
+    }
+    return output;
+}
+
+function getCharacterJealousyLabel(characterInfo) {
     const settings = ensureSettings();
-    return parsePoolList(settings.retentionMessages?.[characterInfo?.key] || '');
+    if (!characterInfo?.key) {
+        return characterInfo?.name || '';
+    }
+    return String(settings.characterJealousyLabels?.[characterInfo.key] || characterInfo.name || '');
 }
 
-function getSavedAngerMessagesForCharacter(characterInfo) {
-    const settings = ensureSettings();
-    return parsePoolList(settings.angerMessages?.[characterInfo?.key] || '');
-}
-
-function getManualMessages(characterInfo) {
-    return getSavedMessagesForCharacter(characterInfo)
-        .map((line) => applyTemplate(line, characterInfo))
+function getManualMessages(characterInfo, templateContext = {}) {
+    return getPoolLines(characterInfo, 'dialogue')
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
         .filter(Boolean);
 }
 
-function getRetentionMessages(characterInfo) {
-    return getSavedRetentionMessagesForCharacter(characterInfo)
-        .map((line) => applyTemplate(line, characterInfo))
+function getRetentionMessages(characterInfo, templateContext = {}) {
+    return getPoolLines(characterInfo, 'retention')
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
         .filter(Boolean);
 }
 
-function getAngerMessages(characterInfo) {
-    return getSavedAngerMessagesForCharacter(characterInfo)
-        .map((line) => applyTemplate(line, characterInfo))
+function getAngerMessages(characterInfo, templateContext = {}) {
+    return getPoolLines(characterInfo, 'anger')
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
         .filter(Boolean);
+}
+
+function getJealousyMessages(characterInfo, templateContext = {}) {
+    return getPoolLines(characterInfo, 'jealousy')
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
+        .filter(Boolean);
+}
+
+function getBirthdayMessages(characterInfo, templateContext = {}) {
+    return getPoolLines(characterInfo, 'birthday')
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
+        .filter(Boolean);
+}
+
+function getReunionMessages(characterInfo, templateContext = {}) {
+    return getPoolLines(characterInfo, 'reunion')
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
+        .filter(Boolean);
+}
+
+function getMessagesForMode(characterInfo, mode, templateContext = {}) {
+    if (mode === 'anger') {
+        return getAngerMessages(characterInfo, templateContext);
+    }
+    if (mode === 'retention') {
+        return getRetentionMessages(characterInfo, templateContext);
+    }
+    if (mode === 'jealousy') {
+        return getJealousyMessages(characterInfo, templateContext);
+    }
+    if (mode === 'birthday') {
+        const birthdayMessages = getBirthdayMessages(characterInfo, templateContext);
+        return birthdayMessages.length ? birthdayMessages : getManualMessages(characterInfo, templateContext);
+    }
+    if (mode === 'reunion') {
+        return getReunionMessages(characterInfo, templateContext);
+    }
+    return getManualMessages(characterInfo, templateContext);
 }
 
 function getRejectCount(characterInfo) {
@@ -2949,6 +3288,196 @@ function shouldShowAngerMode(characterInfo) {
     return getAngerMessages(characterInfo).length > 0;
 }
 
+function isDateEventConsumed(event) {
+    if (!event?.key || !event?.dateKey) {
+        return false;
+    }
+    const settings = ensureSettings();
+    if (settings.dateEventConsumed?.birthdayMode === event.dateKey) {
+        return true;
+    }
+    return settings.dateEventConsumed?.[event.key] === event.dateKey;
+}
+
+function consumeDateEvent(event) {
+    if (!event?.key || !event?.dateKey) {
+        return;
+    }
+    const settings = ensureSettings();
+    settings.dateEventConsumed.birthdayMode = event.dateKey;
+    settings.dateEventConsumed[event.key] = event.dateKey;
+    saveSettingsDebounced();
+}
+
+function getTodayDateEvents(characterInfo, now = new Date()) {
+    const settings = ensureSettings();
+    if (!settings.birthdayEnabled) {
+        return [];
+    }
+
+    const today = formatMonthDay(now);
+    const dateKey = formatLocalDateKey(now);
+    const events = [];
+    const userBirthday = normalizeMonthDay(settings.userBirthday);
+    if (userBirthday && userBirthday === today) {
+        events.push({
+            key: 'userBirthday',
+            dateKey,
+            name: t('invitation.event.userBirthday'),
+        });
+    }
+
+    const characterBirthday = characterInfo?.key ? normalizeMonthDay(settings.characterBirthdays?.[characterInfo.key]) : '';
+    if (characterBirthday && characterBirthday === today) {
+        events.push({
+            key: `characterBirthday:${characterInfo.key}`,
+            dateKey,
+            name: t('invitation.event.characterBirthday', { char: characterInfo.name || t('invitation.unknownCharacter') }),
+        });
+    }
+
+    for (const event of parseCustomDateEvents(settings.customDateEvents)) {
+        if (event.date === today) {
+            events.push({ ...event, dateKey });
+        }
+    }
+
+    if (settings.builtinDateEventsEnabled) {
+        for (const event of builtinDateEvents) {
+            if (event.date === today) {
+                events.push({
+                    ...event,
+                    dateKey,
+                    name: event.nameKey ? t(event.nameKey) : event.name,
+                });
+            }
+        }
+    }
+
+    return events.filter((event) => !isDateEventConsumed(event));
+}
+
+function getJealousyContext(characterInfo, now = new Date()) {
+    const settings = ensureSettings();
+    if (!settings.jealousyEnabled || !characterInfo?.key || !state.lastChatCharacter?.key) {
+        return null;
+    }
+    const last = state.lastChatCharacter;
+    if (last.key === characterInfo.key) {
+        return null;
+    }
+    const leftAt = parseTimestamp(last.leftAt);
+    if (!leftAt) {
+        return null;
+    }
+    const elapsedMs = now.getTime() - leftAt;
+    const windowMs = settings.jealousyWindowMinutes * 60 * 1000;
+    if (elapsedMs < 0 || elapsedMs > windowMs) {
+        return null;
+    }
+    if (Math.random() * 100 >= settings.jealousyChance) {
+        return null;
+    }
+    return {
+        lastChar: last.label || last.name || '',
+        lastChat: last.chatId || '',
+        minutesSinceLastChat: String(Math.max(0, Math.floor(elapsedMs / 60000))),
+    };
+}
+
+async function getCharacterLastChatInfo(characterInfo) {
+    if (!characterInfo?.key) {
+        return { timestamp: 0, never: true };
+    }
+
+    const direct = parseTimestamp(characterInfo.character?.date_last_chat);
+    if (direct) {
+        return { timestamp: direct, never: false };
+    }
+
+    const cache = state.lastChatTimeCache.get(characterInfo.key);
+    if (cache && Date.now() - cache.checkedAt < 5 * 60 * 1000) {
+        return cache;
+    }
+
+    const chats = await getPastChatsForCharacter(characterInfo);
+    const maxTime = chats.reduce((max, chatInfo) => Math.max(max, parseTimestamp(chatInfo.last_mes)), 0);
+    const result = {
+        timestamp: maxTime,
+        never: !chats.length || !maxTime,
+        checkedAt: Date.now(),
+    };
+    state.lastChatTimeCache.set(characterInfo.key, result);
+    return result;
+}
+
+async function getReunionContext(characterInfo, now = new Date()) {
+    const settings = ensureSettings();
+    if (!settings.reunionEnabled || !characterInfo?.key) {
+        return null;
+    }
+
+    const lastChat = await getCharacterLastChatInfo(characterInfo);
+    if (lastChat.never) {
+        if (settings.reunionNoChatPolicy !== 'trigger') {
+            return null;
+        }
+        return {
+            daysSinceLastChat: t('invitation.neverChattedShort'),
+            lastChatDate: t('invitation.neverChatted'),
+            reunionTier: 'EX',
+        };
+    }
+
+    const days = getDaysBetween(lastChat.timestamp, now.getTime());
+    if (days < settings.reunionThresholdDays) {
+        return null;
+    }
+    return {
+        daysSinceLastChat: String(days),
+        lastChatDate: formatDisplayDate(lastChat.timestamp),
+        reunionTier: days >= settings.reunionExtremeThresholdDays ? 'EX' : 'SSR',
+    };
+}
+
+async function resolveInvitationModeAfterAnger(characterInfo) {
+    const now = new Date();
+    const base = buildBaseTemplateContext(characterInfo, { now });
+    const [dateEvent] = getTodayDateEvents(characterInfo, now);
+    if (dateEvent) {
+        return {
+            mode: 'birthday',
+            templateContext: {
+                ...base,
+                todayEvent: dateEvent.name,
+                daysUntilBirthday: '0',
+                dateEvent,
+            },
+        };
+    }
+
+    const reunion = await getReunionContext(characterInfo, now);
+    if (reunion) {
+        return {
+            mode: 'reunion',
+            templateContext: { ...base, ...reunion },
+        };
+    }
+
+    const jealousy = getJealousyContext(characterInfo, now);
+    if (jealousy) {
+        return {
+            mode: 'jealousy',
+            templateContext: { ...base, ...jealousy },
+        };
+    }
+
+    return {
+        mode: 'primary',
+        templateContext: base,
+    };
+}
+
 function getFallbackMessage(characterInfo) {
     return t('invitation.defaultLine', { char: characterInfo?.name || t('invitation.unknownCharacter') });
 }
@@ -2959,6 +3488,39 @@ function getFallbackRetentionMessage(characterInfo) {
 
 function getFallbackAngerMessage(characterInfo) {
     return t('invitation.defaultAngerLine', { char: characterInfo?.name || t('invitation.unknownCharacter') });
+}
+
+function getFallbackJealousyMessage(characterInfo, templateContext = {}) {
+    const values = buildBaseTemplateContext(characterInfo, templateContext);
+    return t('invitation.defaultJealousyLine', {
+        char: values.char || t('invitation.unknownCharacter'),
+        lastChar: values.lastChar || t('invitation.unknownCharacter'),
+    });
+}
+
+function getFallbackBirthdayMessage(characterInfo, templateContext = {}) {
+    const values = buildBaseTemplateContext(characterInfo, templateContext);
+    return t('invitation.defaultBirthdayLine', {
+        char: values.char || t('invitation.unknownCharacter'),
+        event: values.todayEvent || t('invitation.todayEventFallback'),
+    });
+}
+
+function getFallbackReunionMessage(characterInfo, templateContext = {}) {
+    const values = buildBaseTemplateContext(characterInfo, templateContext);
+    return t('invitation.defaultReunionLine', {
+        char: values.char || t('invitation.unknownCharacter'),
+        days: values.daysSinceLastChat || t('invitation.reunionManyDays'),
+    });
+}
+
+function getFallbackMessageForMode(characterInfo, mode, templateContext = {}) {
+    if (mode === 'anger') return getFallbackAngerMessage(characterInfo);
+    if (mode === 'retention') return getFallbackRetentionMessage(characterInfo);
+    if (mode === 'jealousy') return getFallbackJealousyMessage(characterInfo, templateContext);
+    if (mode === 'birthday') return getFallbackBirthdayMessage(characterInfo, templateContext);
+    if (mode === 'reunion') return getFallbackReunionMessage(characterInfo, templateContext);
+    return getFallbackMessage(characterInfo);
 }
 
 function extractGeneratedText(value) {
@@ -3619,6 +4181,9 @@ function renderDraftList(root = state.overlay || document, kind = 'dialogue') {
 function poolElementPrefixFor(kind) {
     if (kind === 'retention') return '#pi_retention_pool';
     if (kind === 'anger') return '#pi_anger_pool';
+    if (kind === 'jealousy') return '#pi_jealousy_pool';
+    if (kind === 'birthday') return '#pi_birthday_pool';
+    if (kind === 'reunion') return '#pi_reunion_pool';
     return '#pi_dialogue_pool';
 }
 
@@ -3637,7 +4202,7 @@ function renderPoolList(root = state.overlay || document, kind = 'dialogue') {
     if (!lines.length) {
         const empty = document.createElement('div');
         empty.className = 'pi-pool-empty';
-        empty.textContent = t('console.dialogue.poolEmpty');
+        empty.textContent = t('console.mode.poolEmpty', { mode: getModePoolLabel(kind) });
         listEl.appendChild(empty);
         return;
     }
@@ -3711,6 +4276,47 @@ function handleClearDraft(root = state.overlay || document, kind = 'dialogue') {
     renderDraftList(root, kind);
 }
 
+function updateLastChatCharacterSnapshot() {
+    const context = getContext?.();
+    if (!context || context.groupId) {
+        return;
+    }
+
+    const characterId = context.characterId;
+    if (characterId !== undefined && characterId !== null && characterId !== '') {
+        const characterInfo = findCharacterById(characterId);
+        if (!characterInfo?.key) {
+            return;
+        }
+        const snapshot = {
+            key: characterInfo.key,
+            id: characterInfo.id,
+            name: characterInfo.name,
+            label: getCharacterJealousyLabel(characterInfo),
+            avatar: characterInfo.avatar,
+            chatId: context.getCurrentChatId?.() ?? context.chatId ?? '',
+            seenAt: Date.now(),
+            leftAt: 0,
+        };
+        state.activeChatCharacter = snapshot;
+        state.lastChatCharacter = snapshot;
+        return;
+    }
+
+    if (state.activeChatCharacter?.key) {
+        state.lastChatCharacter = {
+            ...state.activeChatCharacter,
+            leftAt: Date.now(),
+        };
+        state.activeChatCharacter = null;
+    }
+}
+
+function handleNavigationStateChanged() {
+    updateLastChatCharacterSnapshot();
+    handleHomepageStateChanged();
+}
+
 function isHomepage() {
     const context = getContext?.();
     const characterId = context?.characterId;
@@ -3777,6 +4383,18 @@ function syncSettingsFromDom(root = document) {
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
     const retentionChanceValue = root.querySelector('#pi_retention_chance_value');
+    const jealousyEnabled = root.querySelector('#pi_jealousy_enabled');
+    const jealousyChance = root.querySelector('#pi_jealousy_chance');
+    const jealousyWindowMinutes = root.querySelector('#pi_jealousy_window_minutes');
+    const birthdayEnabled = root.querySelector('#pi_birthday_enabled');
+    const userBirthday = root.querySelector('#pi_user_birthday');
+    const customDateEvents = root.querySelector('#pi_custom_date_events');
+    const builtinDateEventsEnabled = root.querySelector('#pi_builtin_date_events_enabled');
+    const reunionEnabled = root.querySelector('#pi_reunion_enabled');
+    const reunionThresholdDays = root.querySelector('#pi_reunion_threshold_days');
+    const reunionExtremeThresholdDays = root.querySelector('#pi_reunion_extreme_threshold_days');
+    const reunionNoChatPolicy = root.querySelector('#pi_reunion_no_chat_policy');
+    const reunionVisualIntensity = root.querySelector('#pi_reunion_visual_intensity');
     if (isOverlayRoot) {
         syncPoolSelectionFromDom(root);
     }
@@ -3828,6 +4446,7 @@ function syncSettingsFromDom(root = document) {
     if (copyCharacter) {
         settings.selectedCharacterKey = copyCharacter.value;
     }
+    persistCharacterContextualSettings(root);
     if (retentionPromptPreset) {
         const value = retentionPromptPreset.value;
         if (isCustomTemplateKey(value)) {
@@ -3990,6 +4609,49 @@ function syncSettingsFromDom(root = document) {
         settings.continuePickLimit = clampNumber(continuePickLimit.value, 1, 10, defaultSettings.continuePickLimit);
         continuePickLimit.value = String(settings.continuePickLimit);
     }
+    if (jealousyEnabled) {
+        settings.jealousyEnabled = jealousyEnabled.checked;
+    }
+    if (jealousyChance) {
+        settings.jealousyChance = clampNumber(jealousyChance.value, 0, 100, defaultSettings.jealousyChance);
+        jealousyChance.value = String(settings.jealousyChance);
+    }
+    if (jealousyWindowMinutes) {
+        settings.jealousyWindowMinutes = clampNumber(jealousyWindowMinutes.value, 1, 1440, defaultSettings.jealousyWindowMinutes);
+        jealousyWindowMinutes.value = String(settings.jealousyWindowMinutes);
+    }
+    if (birthdayEnabled) {
+        settings.birthdayEnabled = birthdayEnabled.checked;
+    }
+    if (userBirthday) {
+        const normalized = normalizeMonthDay(userBirthday.value);
+        settings.userBirthday = normalized || String(userBirthday.value || '').trim();
+        if (normalized) userBirthday.value = normalized;
+    }
+    if (customDateEvents) {
+        settings.customDateEvents = String(customDateEvents.value || '');
+    }
+    if (builtinDateEventsEnabled) {
+        settings.builtinDateEventsEnabled = builtinDateEventsEnabled.checked;
+    }
+    if (reunionEnabled) {
+        settings.reunionEnabled = reunionEnabled.checked;
+    }
+    if (reunionThresholdDays) {
+        settings.reunionThresholdDays = clampNumber(reunionThresholdDays.value, 1, 3650, defaultSettings.reunionThresholdDays);
+        reunionThresholdDays.value = String(settings.reunionThresholdDays);
+    }
+    if (reunionExtremeThresholdDays) {
+        settings.reunionExtremeThresholdDays = clampNumber(reunionExtremeThresholdDays.value, settings.reunionThresholdDays, 3650, defaultSettings.reunionExtremeThresholdDays);
+        reunionExtremeThresholdDays.value = String(settings.reunionExtremeThresholdDays);
+    }
+    if (reunionNoChatPolicy) {
+        settings.reunionNoChatPolicy = reunionNoChatPolicyKeys.includes(reunionNoChatPolicy.value) ? reunionNoChatPolicy.value : defaultSettings.reunionNoChatPolicy;
+    }
+    if (reunionVisualIntensity) {
+        settings.reunionVisualIntensity = clampNumber(reunionVisualIntensity.value, 0, 100, defaultSettings.reunionVisualIntensity);
+        reunionVisualIntensity.value = String(settings.reunionVisualIntensity);
+    }
     if (retentionChanceValue) {
         retentionChanceValue.value = String(settings.retentionChance);
     }
@@ -4040,6 +4702,18 @@ function persistDialogueEditor(root = document) {
     const frameOpacity = root.querySelector('#pi_frame_opacity_value') || root.querySelector('#pi_frame_opacity');
     const barrageDuration = root.querySelector('#pi_barrage_duration_value') || root.querySelector('#pi_barrage_duration');
     const barrageLineCount = root.querySelector('#pi_barrage_line_count_value') || root.querySelector('#pi_barrage_line_count');
+    const jealousyEnabled = root.querySelector('#pi_jealousy_enabled');
+    const jealousyChance = root.querySelector('#pi_jealousy_chance');
+    const jealousyWindowMinutes = root.querySelector('#pi_jealousy_window_minutes');
+    const birthdayEnabled = root.querySelector('#pi_birthday_enabled');
+    const userBirthday = root.querySelector('#pi_user_birthday');
+    const customDateEvents = root.querySelector('#pi_custom_date_events');
+    const builtinDateEventsEnabled = root.querySelector('#pi_builtin_date_events_enabled');
+    const reunionEnabled = root.querySelector('#pi_reunion_enabled');
+    const reunionThresholdDays = root.querySelector('#pi_reunion_threshold_days');
+    const reunionExtremeThresholdDays = root.querySelector('#pi_reunion_extreme_threshold_days');
+    const reunionNoChatPolicy = root.querySelector('#pi_reunion_no_chat_policy');
+    const reunionVisualIntensity = root.querySelector('#pi_reunion_visual_intensity');
 
     if (enabled) {
         settings.enabled = enabled.checked;
@@ -4065,6 +4739,7 @@ function persistDialogueEditor(root = document) {
     if (copyCharacter) {
         settings.selectedCharacterKey = copyCharacter.value;
     }
+    persistCharacterContextualSettings(root);
     if (aiPromptPreset) {
         const value = aiPromptPreset.value;
         if (isCustomTemplateKey(value)) {
@@ -4174,6 +4849,43 @@ function persistDialogueEditor(root = document) {
     if (barrageLineCount) {
         settings.barrageLineCount = clampNumber(barrageLineCount.value, 2, 8, defaultSettings.barrageLineCount);
     }
+    if (jealousyEnabled) {
+        settings.jealousyEnabled = jealousyEnabled.checked;
+    }
+    if (jealousyChance) {
+        settings.jealousyChance = clampNumber(jealousyChance.value, 0, 100, defaultSettings.jealousyChance);
+    }
+    if (jealousyWindowMinutes) {
+        settings.jealousyWindowMinutes = clampNumber(jealousyWindowMinutes.value, 1, 1440, defaultSettings.jealousyWindowMinutes);
+    }
+    if (birthdayEnabled) {
+        settings.birthdayEnabled = birthdayEnabled.checked;
+    }
+    if (userBirthday) {
+        const normalized = normalizeMonthDay(userBirthday.value);
+        settings.userBirthday = normalized || String(userBirthday.value || '').trim();
+    }
+    if (customDateEvents) {
+        settings.customDateEvents = String(customDateEvents.value || '');
+    }
+    if (builtinDateEventsEnabled) {
+        settings.builtinDateEventsEnabled = builtinDateEventsEnabled.checked;
+    }
+    if (reunionEnabled) {
+        settings.reunionEnabled = reunionEnabled.checked;
+    }
+    if (reunionThresholdDays) {
+        settings.reunionThresholdDays = clampNumber(reunionThresholdDays.value, 1, 3650, defaultSettings.reunionThresholdDays);
+    }
+    if (reunionExtremeThresholdDays) {
+        settings.reunionExtremeThresholdDays = clampNumber(reunionExtremeThresholdDays.value, settings.reunionThresholdDays, 3650, defaultSettings.reunionExtremeThresholdDays);
+    }
+    if (reunionNoChatPolicy) {
+        settings.reunionNoChatPolicy = reunionNoChatPolicyKeys.includes(reunionNoChatPolicy.value) ? reunionNoChatPolicy.value : defaultSettings.reunionNoChatPolicy;
+    }
+    if (reunionVisualIntensity) {
+        settings.reunionVisualIntensity = clampNumber(reunionVisualIntensity.value, 0, 100, defaultSettings.reunionVisualIntensity);
+    }
     const bubbleOffsetXEl = root.querySelector('#pi_bubble_offset_x_value') || root.querySelector('#pi_bubble_offset_x');
     const bubbleOffsetYEl = root.querySelector('#pi_bubble_offset_y_value') || root.querySelector('#pi_bubble_offset_y');
     if (bubbleOffsetXEl) {
@@ -4261,6 +4973,18 @@ function syncDomFromSettings(root = document) {
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
     const retentionChanceValue = root.querySelector('#pi_retention_chance_value');
+    const jealousyEnabled = root.querySelector('#pi_jealousy_enabled');
+    const jealousyChance = root.querySelector('#pi_jealousy_chance');
+    const jealousyWindowMinutes = root.querySelector('#pi_jealousy_window_minutes');
+    const birthdayEnabled = root.querySelector('#pi_birthday_enabled');
+    const userBirthday = root.querySelector('#pi_user_birthday');
+    const customDateEvents = root.querySelector('#pi_custom_date_events');
+    const builtinDateEventsEnabled = root.querySelector('#pi_builtin_date_events_enabled');
+    const reunionEnabled = root.querySelector('#pi_reunion_enabled');
+    const reunionThresholdDays = root.querySelector('#pi_reunion_threshold_days');
+    const reunionExtremeThresholdDays = root.querySelector('#pi_reunion_extreme_threshold_days');
+    const reunionNoChatPolicy = root.querySelector('#pi_reunion_no_chat_policy');
+    const reunionVisualIntensity = root.querySelector('#pi_reunion_visual_intensity');
 
     if (enabled) {
         enabled.checked = settings.enabled;
@@ -4439,6 +5163,42 @@ function syncDomFromSettings(root = document) {
     if (retentionChanceValue) {
         retentionChanceValue.value = String(settings.retentionChance);
     }
+    if (jealousyEnabled) {
+        jealousyEnabled.checked = Boolean(settings.jealousyEnabled);
+    }
+    if (jealousyChance) {
+        jealousyChance.value = String(settings.jealousyChance);
+    }
+    if (jealousyWindowMinutes) {
+        jealousyWindowMinutes.value = String(settings.jealousyWindowMinutes);
+    }
+    if (birthdayEnabled) {
+        birthdayEnabled.checked = Boolean(settings.birthdayEnabled);
+    }
+    if (userBirthday) {
+        userBirthday.value = String(settings.userBirthday || '');
+    }
+    if (customDateEvents) {
+        customDateEvents.value = String(settings.customDateEvents || '');
+    }
+    if (builtinDateEventsEnabled) {
+        builtinDateEventsEnabled.checked = Boolean(settings.builtinDateEventsEnabled);
+    }
+    if (reunionEnabled) {
+        reunionEnabled.checked = Boolean(settings.reunionEnabled);
+    }
+    if (reunionThresholdDays) {
+        reunionThresholdDays.value = String(settings.reunionThresholdDays);
+    }
+    if (reunionExtremeThresholdDays) {
+        reunionExtremeThresholdDays.value = String(settings.reunionExtremeThresholdDays);
+    }
+    if (reunionNoChatPolicy) {
+        reunionNoChatPolicy.value = reunionNoChatPolicyKeys.includes(settings.reunionNoChatPolicy) ? settings.reunionNoChatPolicy : defaultSettings.reunionNoChatPolicy;
+    }
+    if (reunionVisualIntensity) {
+        reunionVisualIntensity.value = String(settings.reunionVisualIntensity);
+    }
     const continueOnDismissEl = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimitEl = root.querySelector('#pi_continue_pick_limit');
     if (continueOnDismissEl) {
@@ -4451,6 +5211,7 @@ function syncDomFromSettings(root = document) {
     renderDialogueEditor(root);
     renderRetentionEditor(root);
     renderAngerEditor(root);
+    renderContextualModeEditors(root);
     renderWorldInfoList(root);
     renderCurrentCharacterBanner(root);
 }
@@ -4609,6 +5370,7 @@ function refreshUi() {
     renderDialogueEditor(state.overlay || document);
     renderRetentionEditor(state.overlay || document);
     renderAngerEditor(state.overlay || document);
+    renderContextualModeEditors(state.overlay || document);
     renderWorldInfoList(state.overlay || document);
     renderPreview(state.overlay || document);
     renderMiniPreview(state.overlay || document);
@@ -4662,6 +5424,7 @@ function openConsole(tab = 'pool') {
     renderDialogueEditor(overlay);
     renderRetentionEditor(overlay);
     renderAngerEditor(overlay);
+    renderContextualModeEditors(overlay);
     renderChatFileList(overlay);
     renderWorldInfoList(overlay);
     renderPreview(overlay);
@@ -5225,6 +5988,85 @@ function bindAngerCardControls(root) {
     }
 }
 
+function buildTestTemplateContext(mode, characterInfo) {
+    const settings = ensureSettings();
+    const base = buildBaseTemplateContext(characterInfo);
+    if (mode === 'jealousy') {
+        const other = getAvailableCharacters().find((entry) => entry.key !== characterInfo?.key);
+        return {
+            ...base,
+            lastChar: other ? getCharacterJealousyLabel(other) : t('console.jealousy.testLastCharFallback'),
+            lastChat: 'test-chat',
+            minutesSinceLastChat: '3',
+        };
+    }
+    if (mode === 'birthday') {
+        return {
+            ...base,
+            todayEvent: t('console.birthday.testEventName'),
+            daysUntilBirthday: '0',
+            dateEvent: {
+                key: 'test:birthday',
+                dateKey: formatLocalDateKey(),
+                name: t('console.birthday.testEventName'),
+            },
+        };
+    }
+    if (mode === 'reunion') {
+        const days = Math.max(settings.reunionThresholdDays + 15, 45);
+        return {
+            ...base,
+            daysSinceLastChat: String(days),
+            lastChatDate: formatDisplayDate(Date.now() - days * 24 * 60 * 60 * 1000),
+            reunionTier: days >= settings.reunionExtremeThresholdDays ? 'EX' : 'SSR',
+        };
+    }
+    return base;
+}
+
+function showContextualModeTest(root, mode) {
+    const characterInfo = getSelectedCharacter();
+    if (!characterInfo) {
+        notify('warning', t('console.dialogue.noCharacters'));
+        return;
+    }
+    state.invitationFromConsoleTest = true;
+    closeConsole();
+    showInvitation(characterInfo, mode, {
+        templateContext: buildTestTemplateContext(mode, characterInfo),
+    });
+}
+
+function bindContextualModeControls(root) {
+    const characterBirthday = root.querySelector('#pi_character_birthday');
+    const characterJealousyLabel = root.querySelector('#pi_character_jealousy_label');
+    const testJealousy = root.querySelector('#pi_jealousy_test');
+    const testBirthday = root.querySelector('#pi_birthday_test');
+    const testReunion = root.querySelector('#pi_reunion_test');
+
+    const saveCharacterContext = () => {
+        persistCharacterContextualSettings(root);
+        saveSettingsDebounced();
+        renderContextualModeEditors(root);
+    };
+
+    if (characterBirthday) {
+        characterBirthday.addEventListener('change', saveCharacterContext);
+    }
+    if (characterJealousyLabel) {
+        characterJealousyLabel.addEventListener('change', saveCharacterContext);
+    }
+    if (testJealousy) {
+        testJealousy.addEventListener('click', () => showContextualModeTest(root, 'jealousy'));
+    }
+    if (testBirthday) {
+        testBirthday.addEventListener('click', () => showContextualModeTest(root, 'birthday'));
+    }
+    if (testReunion) {
+        testReunion.addEventListener('click', () => showContextualModeTest(root, 'reunion'));
+    }
+}
+
 function bindPoolListControls(root, kind) {
     const prefix = poolElementPrefixFor(kind);
     const listEl = root.querySelector(`${prefix}_list`);
@@ -5247,7 +6089,7 @@ function bindPoolListControls(root, kind) {
         appendPoolLines(characterInfo, kind, lines);
         input.value = '';
         saveSettingsDebounced();
-        renderPoolList(root, kind);
+        refreshPoolEditor(root, kind);
         renderPreview(root);
     };
 
@@ -5277,7 +6119,7 @@ function bindPoolListControls(root, kind) {
         }
         setPoolLines(characterInfo, kind, lines);
         saveSettingsDebounced();
-        renderPoolList(root, kind);
+        refreshPoolEditor(root, kind);
         renderPreview(root);
     };
 
@@ -5308,7 +6150,7 @@ function bindPoolListControls(root, kind) {
                 if (!Number.isFinite(index)) return;
                 removePoolLineAt(characterInfo, kind, index);
                 saveSettingsDebounced();
-                renderPoolList(root, kind);
+                refreshPoolEditor(root, kind);
                 renderPreview(root);
                 return;
             }
@@ -5658,6 +6500,7 @@ function bindConsoleEvents(root) {
             renderDialogueEditor(root);
             renderRetentionEditor(root);
             renderAngerEditor(root);
+            renderContextualModeEditors(root);
             renderChatFileList(root);
             renderCurrentCharacterBanner(root);
         });
@@ -5686,6 +6529,7 @@ function bindConsoleEvents(root) {
             renderDialogueEditor(root);
             renderRetentionEditor(root);
             renderAngerEditor(root);
+            renderContextualModeEditors(root);
             renderChatFileList(root);
             renderPreview(root);
             renderCurrentCharacterBanner(root);
@@ -5893,6 +6737,10 @@ function bindConsoleEvents(root) {
     bindPoolListControls(root, 'dialogue');
     bindPoolListControls(root, 'retention');
     bindPoolListControls(root, 'anger');
+    bindPoolListControls(root, 'jealousy');
+    bindPoolListControls(root, 'birthday');
+    bindPoolListControls(root, 'reunion');
+    bindContextualModeControls(root);
     bindAngerCardControls(root);
     bindAppearanceControls(root);
     bindCharacterStyleControls(root);
@@ -5964,7 +6812,11 @@ function bindConsoleEvents(root) {
             state.shownThisRound.clear();
             state.continueCount = 0;
             closeConsole();
-            maybeShowHomepageInvitation(true);
+            maybeShowHomepageInvitation(true).catch((error) => {
+                console.error('[Private Invitation] Failed to show test invitation', error);
+                state.invitationFromConsoleTest = false;
+                openConsole(state.activeTab || 'control');
+            });
         });
     }
 
@@ -6020,6 +6872,18 @@ function bindConsoleEvents(root) {
         '#pi_bubble_offset_y_value',
         '#pi_continue_on_dismiss',
         '#pi_continue_pick_limit',
+        '#pi_jealousy_enabled',
+        '#pi_jealousy_chance',
+        '#pi_jealousy_window_minutes',
+        '#pi_birthday_enabled',
+        '#pi_user_birthday',
+        '#pi_custom_date_events',
+        '#pi_builtin_date_events_enabled',
+        '#pi_reunion_enabled',
+        '#pi_reunion_threshold_days',
+        '#pi_reunion_extreme_threshold_days',
+        '#pi_reunion_no_chat_policy',
+        '#pi_reunion_visual_intensity',
     ];
     liveInputs.forEach((selector) => {
         const input = root.querySelector(selector);
@@ -6129,20 +6993,20 @@ function registerEventHandlers() {
         state.appReady = true;
         state.appReadyAt = Date.now();
         refreshUi();
-        handleHomepageStateChanged();
+        handleNavigationStateChanged();
     });
-    eventSource?.on?.(event_types.CHAT_CHANGED, handleHomepageStateChanged);
+    eventSource?.on?.(event_types.CHAT_CHANGED, handleNavigationStateChanged);
     eventSource?.on?.(event_types.CHARACTER_PAGE_LOADED, () => {
         renderCharacterPool(state.overlay || document);
-        handleHomepageStateChanged();
+        handleNavigationStateChanged();
     });
     eventSource?.on?.(event_types.CHARACTER_DELETED, () => {
         renderCharacterPool(state.overlay || document);
-        handleHomepageStateChanged();
+        handleNavigationStateChanged();
     });
     eventSource?.on?.(event_types.CHARACTER_RENAMED, () => {
         renderCharacterPool(state.overlay || document);
-        handleHomepageStateChanged();
+        handleNavigationStateChanged();
     });
 }
 

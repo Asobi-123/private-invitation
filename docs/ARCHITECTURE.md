@@ -78,6 +78,29 @@ The main console uses a centered modal/native `<dialog>`. The settings inline dr
 
 The homepage invitation never calls AI. It reads saved per-character copy pools. AI is a console-only draft generator.
 
+### Homepage mode resolution
+
+`maybeShowHomepageInvitation()` keeps anger as the outer scheduling override:
+
+```text
+resolvePoolCharacters()
+  ├─ if any anger-ready character exists
+  │     → pick from anger candidates, mode = anger
+  └─ else
+        → pick one normal pool character
+        → resolveInvitationModeAfterAnger(character)
+             ├─ birthday / special date, if not consumed today
+             ├─ reunion, if last chat age reaches the threshold
+             ├─ jealousy, if the last-chat snapshot is recent and chance passes
+             └─ primary
+```
+
+Only one mode is used per invitation. There are no combined pools such as anger-birthday or reunion-jealousy. Birthday mode writes a date-level consumption marker after a successful display, so the same local day does not repeatedly enter birthday mode.
+
+The last-chat snapshot is updated from SillyTavern navigation events. While on a character chat page, the active character is stored as `state.activeChatCharacter`; when returning to the homepage, that snapshot is copied to `state.lastChatCharacter` with `leftAt`. Jealousy uses that snapshot only if the newly drawn character is different.
+
+Reunion checks only the character that was already randomly drawn. It uses `character.date_last_chat` first, then falls back to `/api/characters/chats` and the maximum `last_mes` timestamp. This does not increase old characters' draw probability.
+
 ### Shared preview classes
 
 Preview and real invitation share `.pi-invitation-*` class names. This makes built-in CSS templates, custom CSS, and AI CSS visible in preview before the real popup appears.
@@ -167,10 +190,10 @@ Known limitation: nested same-name tags (`<div><div>inner</div></div>`) match on
 - Filter / exclude chip pool input listeners (Enter / comma / paste / × delete / backspace)
 - Number-pair sync between sliders and number inputs
 - Close button, retention chance pair, color pickers, etc.
+- Contextual copy-pool controls and manual tests for jealousy, birthday, and reunion.
 
 `syncDomFromSettings(root)` and `syncSettingsFromDom(root)` move state between the persisted `settings` object and the rendered DOM; they do not bind listeners. Re-rendering or re-opening the console should call sync, not bind.
 
 ## Compatibility Notes
 
 The extension must work under localhost, HTTP, HTTPS, and pure IP VPS access. Runtime code avoids secure-context-only browser APIs such as `crypto.subtle`.
-

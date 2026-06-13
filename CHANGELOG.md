@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Contextual homepage modes after anger scheduling: jealousy, birthday / special date, and SSR reunion.
+- Time and date template variables for saved copy pools, including `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, and `{daysUntilBirthday}`.
+- Last-chat snapshot support for jealousy lines with `{lastChar}`, `{lastChat}`, and `{minutesSinceLastChat}`.
+- Birthday / special-date one-day guard: once birthday mode successfully displays on a local date, later callbacks that day skip birthday mode.
+- SSR reunion checks based on `date_last_chat` or `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
+- Reunion gold visual treatment and manual test buttons for jealousy, birthday, and reunion modes.
+
+### Changed
+
+- Homepage mode selection keeps anger-ready characters as the outer priority, then resolves birthday, reunion, jealousy, or primary only for the already drawn normal character.
+
 ## [1.0.0] - 2026-05-27
 
 Initial public release.
