@@ -52,7 +52,7 @@ Steps:
 3. Add several main invitation lines.
 4. Add several retention lines.
 5. Add several anger, jealousy, birthday, and reunion lines.
-6. Set a per-character jealousy label and birthday.
+6. Set a per-character jealousy label, jealousy chance, character birthday, user birthday, and special date.
 7. Delete one line from each pool.
 8. Reload SillyTavern and reopen the console.
 
@@ -61,7 +61,7 @@ Expected:
 - Copy pools are stored per character.
 - Main, retention, anger, jealousy, birthday, and reunion pools do not overwrite each other.
 - Chip lists render correctly.
-- Per-character jealousy label and birthday persist.
+- Per-character jealousy label, jealousy chance, birthday, user birthday, and special dates persist.
 - Reload preserves saved lines.
 
 ## 4. Shared API Draft Generation
@@ -72,15 +72,15 @@ Steps:
 2. Select a character.
 3. Generate main invitation drafts.
 4. Move one draft into the saved pool.
-5. Generate retention drafts.
-6. Move one retention draft into the saved pool.
+5. Generate retention, anger, jealousy, birthday, and reunion drafts.
+6. Move one draft from each scope into the matching saved pool.
 
 Expected:
 
 - Drafts are generated through SillyTavern's configured API.
 - New drafts append to existing drafts.
 - Moving a draft removes it from the draft list and adds it to the correct saved pool.
-- Main and retention drafts remain separate.
+- Main, retention, anger, jealousy, birthday, and reunion drafts remain separate.
 
 ## 5. Independent API Draft Generation
 
@@ -128,7 +128,7 @@ Steps:
 
 1. Set up a chat with significantly more floors than `chatChunkSize` (e.g. 80+ floors, chunk size 20).
 2. Set start floor = 0, end floor = 80, batch delay = 500ms.
-3. Generate drafts in the dialogue / retention / anger scope.
+3. Generate drafts in the dialogue / retention / anger / jealousy / birthday / reunion scope.
 4. While generation is running, observe the button label.
 5. Mid-run, click the button to cancel.
 6. After the run, inspect the draft pool count.
@@ -188,16 +188,16 @@ Steps:
 
 1. Keep at least two characters in the invitation pool.
 2. Save jealousy, birthday, and reunion lines for one test character.
-3. Enable jealousy mode, set chance to 100%, and set the window to at least 10 minutes.
+3. Enable jealousy mode, set global chance to 0%, then set the test character's jealousy chance to 100% and the window to at least 10 minutes.
 4. Open a different character chat, then return to the homepage and trigger an invitation for the test character.
-5. Set user birthday or the character birthday to today's `MM-DD`, then trigger the test character.
+5. Set the test character's user birthday, character birthday, or special date to today's `MM-DD`, then trigger the test character.
 6. Trigger birthday mode again on the same local date.
 7. Enable reunion mode, set `reunionThresholdDays` low enough to match an old chat, or use the manual reunion test button.
 8. Test the manual buttons for jealousy, birthday, and reunion from the Copy tab.
 
 Expected:
 
-- Jealousy mode only triggers when the last-chat character exists, is different, is within the configured time window, and chance passes.
+- Jealousy mode only triggers when the last-chat character exists, is different, is within the configured time window, and the drawn character's chance override passes.
 - Birthday mode wins over reunion / jealousy after anger, but only once per local date after successful display.
 - After birthday mode is consumed for the date, the same character can still enter reunion, jealousy, or primary mode.
 - Reunion mode only checks the already drawn character and does not change draw probability.

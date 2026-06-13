@@ -218,6 +218,11 @@
                         <input id="pi_character_jealousy_label" type="text" class="text_pole" data-i18n-placeholder="console.jealousy.characterLabelPlaceholder" placeholder="可选，例如：那个女人 / 那个人 / 前辈">
                         <small class="pi-muted" data-i18n="console.jealousy.characterLabelNote">用于别人提到这个角色时的 {lastChar}。留空则用角色名。</small>
                     </div>
+                    <div class="pi-field">
+                        <label for="pi_character_jealousy_chance" data-i18n="console.jealousy.characterChance">本角色吃醋概率 %</label>
+                        <input id="pi_character_jealousy_chance" type="number" min="0" max="100" step="1" class="text_pole pi-number" data-i18n-placeholder="console.jealousy.characterChancePlaceholder" placeholder="留空使用全局默认">
+                        <small class="pi-muted" data-i18n="console.jealousy.characterChanceNote">留空时使用运行控制里的全局默认概率。</small>
+                    </div>
                     <div class="pi-actions-row pi-actions-row--compact">
                         <button id="pi_jealousy_test" type="button" class="menu_button" data-i18n="console.jealousy.testButton">测试吃醋邀约</button>
                     </div>
@@ -242,6 +247,16 @@
                     <div class="pi-field">
                         <label for="pi_character_birthday" data-i18n="console.birthday.characterBirthday">本角色生日</label>
                         <input id="pi_character_birthday" type="text" class="text_pole" data-i18n-placeholder="console.birthday.characterBirthdayPlaceholder" placeholder="MM-DD，例如 06-12">
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_character_user_birthday" data-i18n="console.birthday.characterUserBirthday">这个设定里的用户生日</label>
+                        <input id="pi_character_user_birthday" type="text" class="text_pole" data-i18n-placeholder="console.birthday.characterUserBirthdayPlaceholder" placeholder="MM-DD，例如 06-12">
+                        <small class="pi-muted" data-i18n="console.birthday.characterUserBirthdayNote">不同角色设定里的“用户生日”不同时，在这里单独填。</small>
+                    </div>
+                    <div class="pi-field">
+                        <label for="pi_character_date_events" data-i18n="console.birthday.characterDateEvents">本角色特殊日期</label>
+                        <textarea id="pi_character_date_events" class="text_pole pi-textarea" rows="3" data-i18n-placeholder="console.birthday.characterDateEventsPlaceholder" placeholder="每行一个：MM-DD 名称"></textarea>
+                        <small class="pi-muted" data-i18n="console.birthday.characterDateEventsNote">用于这个角色自己的纪念日、宝宝生日、剧情日等。</small>
                     </div>
                     <div class="pi-actions-row pi-actions-row--compact">
                         <button id="pi_birthday_test" type="button" class="menu_button" data-i18n="console.birthday.testButton">测试生日邀约</button>
@@ -341,6 +356,9 @@
                     <button type="button" class="pi-scope-tab active" data-pi-scope="dialogue" data-pi-scope-host="ai" data-i18n="console.scope.dialogue">主邀约</button>
                     <button type="button" class="pi-scope-tab" data-pi-scope="retention" data-pi-scope-host="ai" data-i18n="console.scope.retention">挽留</button>
                     <button type="button" class="pi-scope-tab" data-pi-scope="anger" data-pi-scope-host="ai" data-i18n="console.scope.anger">生气</button>
+                    <button type="button" class="pi-scope-tab" data-pi-scope="jealousy" data-pi-scope-host="ai" data-i18n="console.scope.jealousy">吃醋</button>
+                    <button type="button" class="pi-scope-tab" data-pi-scope="birthday" data-pi-scope-host="ai" data-i18n="console.scope.birthday">生日</button>
+                    <button type="button" class="pi-scope-tab" data-pi-scope="reunion" data-pi-scope-host="ai" data-i18n="console.scope.reunion">久别重逢</button>
                 </div>
 
                 <!-- 主邀约 AI scope -->
@@ -575,6 +593,171 @@
                             <small class="pi-muted" data-i18n="console.anger.draftHint">点 + 把单条加入生气池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
                             <span id="pi_anger_ai_draft_count" class="pi-muted"></span>
                             <div id="pi_anger_ai_draft_list" class="pi-draft-list" role="list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 吃醋 AI scope -->
+                <div class="pi-scope-pane" data-pi-scope-pane="jealousy" data-pi-scope-host="ai" hidden>
+                    <div class="pi-card">
+                        <div class="pi-card-head">
+                            <strong data-i18n="console.ai.jealousyTitle">吃醋 AI 生成</strong>
+                            <span class="pi-muted" data-i18n="console.ai.jealousyCharHint">为顶部「当前角色」批量写吃醋文案。上下文沿用主邀约的聊天 / 世界书设置。</span>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_jealousy_prompt_preset" data-i18n="console.jealousy.promptPreset">吃醋生成类型</label>
+                            <select id="pi_jealousy_prompt_preset" class="text_pole">
+                                <optgroup id="pi_jealousy_prompt_builtin_group" data-i18n="[label]console.jealousy.promptBuiltinGroup" label="内置预设">
+                                    <option value="teasingJealousy" data-i18n="console.jealousy.promptPreset.teasingJealousy">笑着吃味</option>
+                                    <option value="coldProbe" data-i18n="console.jealousy.promptPreset.coldProbe">冷淡试探</option>
+                                    <option value="possessiveThread" data-i18n="console.jealousy.promptPreset.possessiveThread">占有暗线</option>
+                                    <option value="hurtSilence" data-i18n="console.jealousy.promptPreset.hurtSilence">受伤沉默</option>
+                                    <option value="rivalCallback" data-i18n="console.jealousy.promptPreset.rivalCallback">情敌回扣</option>
+                                </optgroup>
+                                <optgroup id="pi_jealousy_prompt_custom_group" data-i18n="[label]console.jealousy.promptCustomGroup" label="我的模板"></optgroup>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_jealousy_prompt_body" data-i18n="console.jealousy.promptBody">吃醋提示词正文（可编辑）</label>
+                            <textarea id="pi_jealousy_prompt_body" class="text_pole pi-textarea" rows="6" data-i18n-placeholder="console.jealousy.promptBodyPlaceholder" placeholder="可直接修改吃醋提示词。{char} 会被替换成角色名，{count} 会被替换成生成条数。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_jealousy_reset_prompt" type="button" class="menu_button" data-i18n="console.jealousy.resetPrompt">还原内置预设</button>
+                                <button id="pi_jealousy_save_template" type="button" class="menu_button" data-i18n="console.jealousy.saveTemplate">保存为我的模板</button>
+                                <button id="pi_jealousy_delete_template" type="button" class="menu_button" data-i18n="console.jealousy.deleteTemplate">删除当前模板</button>
+                            </div>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_jealousy_batch_count" data-i18n="console.jealousy.batchCount">批量生成条数</label>
+                            <input id="pi_jealousy_batch_count" type="number" min="3" max="30" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_jealousy_ai_prompt" data-i18n="console.jealousy.aiPrompt">补充生成要求</label>
+                            <textarea id="pi_jealousy_ai_prompt" class="text_pole pi-textarea" rows="5" data-i18n-placeholder="console.jealousy.aiPromptPlaceholder" placeholder="补充吃醋的强弱、角色对上一个聊天对象的称呼、想避开的表达。可以用 {char} 代表角色名。"></textarea>
+                        </div>
+                        <div class="pi-actions-row pi-actions-row--compact">
+                            <span class="pi-muted" data-i18n="console.jealousy.contextNote">吃醋生成会沿用主邀约的聊天记录和世界书上下文。</span>
+                            <button id="pi_jealousy_open_context" type="button" class="menu_button" data-i18n="console.jealousy.openContext">去主邀约调整上下文</button>
+                        </div>
+                        <div class="pi-actions-row">
+                            <button id="pi_jealousy_ai_generate_batch" type="button" class="menu_button" data-i18n="console.jealousy.generateBatch">AI 批量生成吃醋草稿</button>
+                            <button id="pi_jealousy_ai_append_all" type="button" class="menu_button" data-i18n="console.jealousy.appendAll">全部加入吃醋池</button>
+                            <button id="pi_jealousy_ai_draft_clear" type="button" class="menu_button" data-i18n="console.jealousy.clearDrafts">清空草稿</button>
+                        </div>
+                        <div class="pi-field">
+                            <label data-i18n="console.jealousy.generatedDraft">AI 吃醋草稿</label>
+                            <small class="pi-muted" data-i18n="console.jealousy.draftHint">点 + 把单条加入吃醋池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
+                            <span id="pi_jealousy_ai_draft_count" class="pi-muted"></span>
+                            <div id="pi_jealousy_ai_draft_list" class="pi-draft-list" role="list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 生日 AI scope -->
+                <div class="pi-scope-pane" data-pi-scope-pane="birthday" data-pi-scope-host="ai" hidden>
+                    <div class="pi-card">
+                        <div class="pi-card-head">
+                            <strong data-i18n="console.ai.birthdayTitle">生日 / 特殊日期 AI 生成</strong>
+                            <span class="pi-muted" data-i18n="console.ai.birthdayCharHint">为顶部「当前角色」批量写生日和纪念日文案。上下文沿用主邀约的聊天 / 世界书设置。</span>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_birthday_prompt_preset" data-i18n="console.birthday.promptPreset">生日生成类型</label>
+                            <select id="pi_birthday_prompt_preset" class="text_pole">
+                                <optgroup id="pi_birthday_prompt_builtin_group" data-i18n="[label]console.birthday.promptBuiltinGroup" label="内置预设">
+                                    <option value="warmBirthday" data-i18n="console.birthday.promptPreset.warmBirthday">温柔生日</option>
+                                    <option value="privateAnniversary" data-i18n="console.birthday.promptPreset.privateAnniversary">私人纪念日</option>
+                                    <option value="surpriseInvite" data-i18n="console.birthday.promptPreset.surpriseInvite">惊喜邀约</option>
+                                    <option value="bittersweetMemory" data-i18n="console.birthday.promptPreset.bittersweetMemory">苦甜回忆</option>
+                                    <option value="ritualPromise" data-i18n="console.birthday.promptPreset.ritualPromise">仪式承诺</option>
+                                </optgroup>
+                                <optgroup id="pi_birthday_prompt_custom_group" data-i18n="[label]console.birthday.promptCustomGroup" label="我的模板"></optgroup>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_birthday_prompt_body" data-i18n="console.birthday.promptBody">生日提示词正文（可编辑）</label>
+                            <textarea id="pi_birthday_prompt_body" class="text_pole pi-textarea" rows="6" data-i18n-placeholder="console.birthday.promptBodyPlaceholder" placeholder="可直接修改生日提示词。{char} 会被替换成角色名，{count} 会被替换成生成条数。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_birthday_reset_prompt" type="button" class="menu_button" data-i18n="console.birthday.resetPrompt">还原内置预设</button>
+                                <button id="pi_birthday_save_template" type="button" class="menu_button" data-i18n="console.birthday.saveTemplate">保存为我的模板</button>
+                                <button id="pi_birthday_delete_template" type="button" class="menu_button" data-i18n="console.birthday.deleteTemplate">删除当前模板</button>
+                            </div>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_birthday_batch_count" data-i18n="console.birthday.batchCount">批量生成条数</label>
+                            <input id="pi_birthday_batch_count" type="number" min="3" max="30" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_birthday_ai_prompt" data-i18n="console.birthday.aiPrompt">补充生成要求</label>
+                            <textarea id="pi_birthday_ai_prompt" class="text_pole pi-textarea" rows="5" data-i18n-placeholder="console.birthday.aiPromptPlaceholder" placeholder="补充日期名称、生日对象、关系阶段、想避开的表达。可以用 {char} 代表角色名。"></textarea>
+                        </div>
+                        <div class="pi-actions-row pi-actions-row--compact">
+                            <span class="pi-muted" data-i18n="console.birthday.contextNote">生日生成会沿用主邀约的聊天记录和世界书上下文。</span>
+                            <button id="pi_birthday_open_context" type="button" class="menu_button" data-i18n="console.birthday.openContext">去主邀约调整上下文</button>
+                        </div>
+                        <div class="pi-actions-row">
+                            <button id="pi_birthday_ai_generate_batch" type="button" class="menu_button" data-i18n="console.birthday.generateBatch">AI 批量生成生日草稿</button>
+                            <button id="pi_birthday_ai_append_all" type="button" class="menu_button" data-i18n="console.birthday.appendAll">全部加入生日池</button>
+                            <button id="pi_birthday_ai_draft_clear" type="button" class="menu_button" data-i18n="console.birthday.clearDrafts">清空草稿</button>
+                        </div>
+                        <div class="pi-field">
+                            <label data-i18n="console.birthday.generatedDraft">AI 生日草稿</label>
+                            <small class="pi-muted" data-i18n="console.birthday.draftHint">点 + 把单条加入生日池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
+                            <span id="pi_birthday_ai_draft_count" class="pi-muted"></span>
+                            <div id="pi_birthday_ai_draft_list" class="pi-draft-list" role="list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 久别重逢 AI scope -->
+                <div class="pi-scope-pane" data-pi-scope-pane="reunion" data-pi-scope-host="ai" hidden>
+                    <div class="pi-card">
+                        <div class="pi-card-head">
+                            <strong data-i18n="console.ai.reunionTitle">久别重逢 AI 生成</strong>
+                            <span class="pi-muted" data-i18n="console.ai.reunionCharHint">为顶部「当前角色」批量写久别重逢文案。上下文沿用主邀约的聊天 / 世界书设置。</span>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_reunion_prompt_preset" data-i18n="console.reunion.promptPreset">久别重逢生成类型</label>
+                            <select id="pi_reunion_prompt_preset" class="text_pole">
+                                <optgroup id="pi_reunion_prompt_builtin_group" data-i18n="[label]console.reunion.promptBuiltinGroup" label="内置预设">
+                                    <option value="quietReturn" data-i18n="console.reunion.promptPreset.quietReturn">安静归来</option>
+                                    <option value="goldenSummon" data-i18n="console.reunion.promptPreset.goldenSummon">金光召回</option>
+                                    <option value="forgottenRoom" data-i18n="console.reunion.promptPreset.forgottenRoom">冷宫房间</option>
+                                    <option value="longWait" data-i18n="console.reunion.promptPreset.longWait">漫长等待</option>
+                                    <option value="extremeReunion" data-i18n="console.reunion.promptPreset.extremeReunion">半年重逢</option>
+                                </optgroup>
+                                <optgroup id="pi_reunion_prompt_custom_group" data-i18n="[label]console.reunion.promptCustomGroup" label="我的模板"></optgroup>
+                            </select>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_reunion_prompt_body" data-i18n="console.reunion.promptBody">久别重逢提示词正文（可编辑）</label>
+                            <textarea id="pi_reunion_prompt_body" class="text_pole pi-textarea" rows="6" data-i18n-placeholder="console.reunion.promptBodyPlaceholder" placeholder="可直接修改久别重逢提示词。{char} 会被替换成角色名，{count} 会被替换成生成条数。"></textarea>
+                            <div class="pi-actions-row pi-actions-row--compact">
+                                <button id="pi_reunion_reset_prompt" type="button" class="menu_button" data-i18n="console.reunion.resetPrompt">还原内置预设</button>
+                                <button id="pi_reunion_save_template" type="button" class="menu_button" data-i18n="console.reunion.saveTemplate">保存为我的模板</button>
+                                <button id="pi_reunion_delete_template" type="button" class="menu_button" data-i18n="console.reunion.deleteTemplate">删除当前模板</button>
+                            </div>
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_reunion_batch_count" data-i18n="console.reunion.batchCount">批量生成条数</label>
+                            <input id="pi_reunion_batch_count" type="number" min="3" max="30" step="1" class="text_pole pi-number">
+                        </div>
+                        <div class="pi-field">
+                            <label for="pi_reunion_ai_prompt" data-i18n="console.reunion.aiPrompt">补充生成要求</label>
+                            <textarea id="pi_reunion_ai_prompt" class="text_pole pi-textarea" rows="5" data-i18n-placeholder="console.reunion.aiPromptPlaceholder" placeholder="补充未聊天时长、SSR / EX 稀有感、想避开的表达。可以用 {char} 代表角色名。"></textarea>
+                        </div>
+                        <div class="pi-actions-row pi-actions-row--compact">
+                            <span class="pi-muted" data-i18n="console.reunion.contextNote">久别重逢生成会沿用主邀约的聊天记录和世界书上下文。</span>
+                            <button id="pi_reunion_open_context" type="button" class="menu_button" data-i18n="console.reunion.openContext">去主邀约调整上下文</button>
+                        </div>
+                        <div class="pi-actions-row">
+                            <button id="pi_reunion_ai_generate_batch" type="button" class="menu_button" data-i18n="console.reunion.generateBatch">AI 批量生成久别重逢草稿</button>
+                            <button id="pi_reunion_ai_append_all" type="button" class="menu_button" data-i18n="console.reunion.appendAll">全部加入久别重逢池</button>
+                            <button id="pi_reunion_ai_draft_clear" type="button" class="menu_button" data-i18n="console.reunion.clearDrafts">清空草稿</button>
+                        </div>
+                        <div class="pi-field">
+                            <label data-i18n="console.reunion.generatedDraft">AI 久别重逢草稿</label>
+                            <small class="pi-muted" data-i18n="console.reunion.draftHint">点 + 把单条加入久别重逢池（同时从草稿移除），点 × 仅从草稿删除。再次生成会追加到下面，不会清空。</small>
+                            <span id="pi_reunion_ai_draft_count" class="pi-muted"></span>
+                            <div id="pi_reunion_ai_draft_list" class="pi-draft-list" role="list"></div>
                         </div>
                     </div>
                 </div>

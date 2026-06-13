@@ -33,8 +33,14 @@ Representative shape:
   "jealousyMessages": {},
   "birthdayMessages": {},
   "reunionMessages": {},
+  "jealousyDrafts": {},
+  "birthdayDrafts": {},
+  "reunionDrafts": {},
   "characterJealousyLabels": {},
+  "characterJealousyChances": {},
   "characterBirthdays": {},
+  "characterUserBirthdays": {},
+  "characterDateEvents": {},
   "dateEventConsumed": {},
   "rejectCounts": {},
   "characterChatFiles": {},
@@ -66,15 +72,30 @@ Representative shape:
   "jealousyEnabled": false,
   "jealousyChance": 45,
   "jealousyWindowMinutes": 10,
+  "jealousyPromptPreset": "teasingJealousy",
+  "jealousyPromptBody": "",
+  "jealousyBatchCount": 8,
+  "jealousyCustomTemplates": {},
+  "jealousyAiPrompt": "",
   "birthdayEnabled": true,
   "userBirthday": "",
   "customDateEvents": "",
   "builtinDateEventsEnabled": false,
+  "birthdayPromptPreset": "warmBirthday",
+  "birthdayPromptBody": "",
+  "birthdayBatchCount": 8,
+  "birthdayCustomTemplates": {},
+  "birthdayAiPrompt": "",
   "reunionEnabled": false,
   "reunionThresholdDays": 30,
   "reunionExtremeThresholdDays": 180,
   "reunionNoChatPolicy": "skip",
   "reunionVisualIntensity": 70,
+  "reunionPromptPreset": "quietReturn",
+  "reunionPromptBody": "",
+  "reunionBatchCount": 8,
+  "reunionCustomTemplates": {},
+  "reunionAiPrompt": "",
   "aiUseChatContext": false,
   "aiUseWorldInfo": false,
   "chatFloorStart": 0,
@@ -133,11 +154,15 @@ Contextual mode pools mirror the same per-character shape:
 - `jealousyMessages`: lines used when the selected character reacts to the last chat character.
 - `birthdayMessages`: lines used on user birthday, character birthday, built-in holidays, or custom dates. If empty, birthday mode falls back to `characterMessages`.
 - `reunionMessages`: lines used when a randomly drawn character has not been chatted with for at least `reunionThresholdDays`.
+- `jealousyDrafts`, `birthdayDrafts`, `reunionDrafts`: AI draft pools for the matching contextual modes.
 
 Per-character contextual settings:
 
 - `characterJealousyLabels`: optional display label used as `{lastChar}` when another character refers to this character.
+- `characterJealousyChances`: optional per-character jealousy probability override. Missing keys fall back to `jealousyChance`.
 - `characterBirthdays`: per-character `MM-DD` birthday map.
+- `characterUserBirthdays`: optional per-character `MM-DD` map for user birthday variants inside that character's setting.
+- `characterDateEvents`: per-character custom special date text. Same line format as `customDateEvents`.
 
 Date consumption:
 
@@ -152,11 +177,11 @@ Date consumption:
 
 Contextual mode trigger settings:
 
-- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`
-- `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`
+- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the global default when the current character has no `characterJealousyChances` value.
+- `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for the drawn character.
 - `reunionEnabled`, `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
 
-`customDateEvents` is plain text, one event per line:
+`customDateEvents` and each `characterDateEvents[characterKey]` value are plain text, one event per line:
 
 ```text
 06-12 Anniversary
@@ -181,6 +206,9 @@ Draft pools:
 - `characterDrafts`
 - `retentionDrafts`
 - `angerDrafts`
+- `jealousyDrafts`
+- `birthdayDrafts`
+- `reunionDrafts`
 
 ## Anger Mode Per-Character State
 
@@ -284,6 +312,9 @@ Template maps:
 - `aiCustomTemplates`
 - `retentionCustomTemplates`
 - `angerCustomTemplates`
+- `jealousyCustomTemplates`
+- `birthdayCustomTemplates`
+- `reunionCustomTemplates`
 - `customCssTemplates`
 
 Custom template select values use:

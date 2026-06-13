@@ -23,7 +23,7 @@ A SillyTavern extension that turns the homepage into a character-recall surface.
 ### AI draft generation
 - Generated offline in the console, then manually picked into the pool
 - Inputs to the AI: character card, chat history floors you choose, world info entries
-- Built-in presets: 5 invitation, 5 retention, 8 anger
+- Built-in presets: 5 invitation, 5 retention, 8 anger, plus 5 each for jealousy, birthday, and reunion
 - **Auto-batching**: when chat is long, the plugin walks the floor range in chunks automatically and merges all batch drafts at the end
 - Cancel mid-generation; already-completed batches are kept
 
@@ -35,7 +35,7 @@ A SillyTavern extension that turns the homepage into a character-recall surface.
 
 ### Contextual callbacks
 - **Jealousy / triangle**: after returning home from character A, character B can react to the last-chat snapshot if drawn
-- **Time / special dates**: saved lines support variables like `{time}`, `{period}`, and `{todayEvent}`; birthday / special-date mode can use its own pool
+- **Time / special dates**: saved lines support variables like `{time}`, `{period}`, and `{todayEvent}`; birthday / special dates can be configured per character
 - **SSR reunion**: after a character is drawn, long chat absence can trigger a gold visual treatment and reunion lines
 - One popup uses exactly one form, so no combined copy pools are required; birthday mode is consumed for the local date after a successful display
 
@@ -158,7 +158,7 @@ Tags with attributes match too — entering `div` also strips `<div class="x">..
 | **SSR reunion** | Drawn character has not been chatted with for the configured days | Gold visual treatment and reunion pool |
 | **Jealousy / triangle** | Drawn character differs from the last-chat character and is within the time window | Uses last-chat variables |
 
-Main, retention, and anger have AI draft generation. Jealousy, birthday, and reunion use hand-written pools and fallbacks, so no combined copy generation is required.
+Main, retention, anger, jealousy, birthday, and reunion all have independent AI draft generation. Runtime homepage popups still only read saved pools and never call AI on the fly.
 
 ---
 
