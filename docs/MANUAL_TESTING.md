@@ -199,7 +199,7 @@ Steps:
 Expected:
 
 - Jealousy mode only triggers when the last-chat character exists, the window is valid, the global event roll hits, and at least one different pool character has jealousy lines with positive appearance weight.
-- Entering a new character clears the older stored departure snapshot; returning home writes the new character as the last-chat snapshot.
+- Entering a new character overwrites the older stored snapshot; returning home writes the new character as the last-chat snapshot.
 - For normal random draws, birthday mode wins over reunion after anger; successful jealousy dispatch happens before the normal draw.
 - After birthday mode is consumed for the date, normal draws for the same character can still enter reunion or primary mode.
 - Reunion mode only checks the already drawn character and does not change draw probability.

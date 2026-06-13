@@ -706,6 +706,8 @@ const state = {
     homepageCheckTimer: null,
     homepageRetryTimer: null,
     navigationSnapshotTimers: [],
+    navigationMonitorTimer: null,
+    navigationMonitorSignature: '',
     homepageStableSince: 0,
     homepageInvitePending: false,
     homepageInviteLoading: false,
@@ -1266,12 +1268,16 @@ function formatDisplayDate(timestamp) {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-function normalizeLastChatSnapshot(value) {
+function normalizeLastChatSnapshot(value, options = {}) {
     if (!value || typeof value !== 'object' || !value.key) {
         return null;
     }
+    const seenAt = parseTimestamp(value.seenAt);
     const leftAt = parseTimestamp(value.leftAt);
-    if (!leftAt) {
+    if (!leftAt && !options.allowActive) {
+        return null;
+    }
+    if (!leftAt && !seenAt) {
         return null;
     }
     return {
@@ -1281,21 +1287,21 @@ function normalizeLastChatSnapshot(value) {
         label: String(value.label || value.name || ''),
         avatar: String(value.avatar || ''),
         chatId: String(value.chatId || ''),
-        seenAt: parseTimestamp(value.seenAt) || leftAt,
-        leftAt,
+        seenAt: seenAt || leftAt,
+        leftAt: leftAt || 0,
     };
 }
 
-function readStoredLastChatSnapshot() {
+function readStoredLastChatSnapshot(options = {}) {
     try {
-        return normalizeLastChatSnapshot(JSON.parse(sessionStorage.getItem(lastChatSnapshotStorageKey) || 'null'));
+        return normalizeLastChatSnapshot(JSON.parse(sessionStorage.getItem(lastChatSnapshotStorageKey) || 'null'), options);
     } catch {
         return null;
     }
 }
 
-function writeStoredLastChatSnapshot(snapshot) {
-    const normalized = normalizeLastChatSnapshot(snapshot);
+function writeStoredLastChatSnapshot(snapshot, options = {}) {
+    const normalized = normalizeLastChatSnapshot(snapshot, options);
     try {
         if (normalized) {
             sessionStorage.setItem(lastChatSnapshotStorageKey, JSON.stringify(normalized));
@@ -1323,7 +1329,7 @@ function rememberActiveChatCharacter(characterInfo, context = getContext?.()) {
     };
     state.activeChatCharacter = snapshot;
     state.lastChatCharacter = snapshot;
-    writeStoredLastChatSnapshot(null);
+    writeStoredLastChatSnapshot(snapshot, { allowActive: true });
 }
 
 function finalizeActiveChatDeparture(leftAt = Date.now()) {
@@ -3769,10 +3775,16 @@ function getJealousyDepartureContext(now = new Date()) {
     if (!settings.jealousyEnabled) {
         return null;
     }
-    if (isHomepage()) {
+    const homepage = isHomepage();
+    if (homepage) {
         finalizeActiveChatDeparture(now.getTime());
     }
-    const last = normalizeLastChatSnapshot(state.lastChatCharacter) || readStoredLastChatSnapshot();
+    let last = normalizeLastChatSnapshot(state.lastChatCharacter) || readStoredLastChatSnapshot({ allowActive: homepage });
+    if (last?.key && !last.leftAt && homepage) {
+        last = { ...last, leftAt: now.getTime() };
+        state.lastChatCharacter = last;
+        writeStoredLastChatSnapshot(last);
+    }
     if (!last?.key) {
         return null;
     }
@@ -4777,7 +4789,35 @@ function scheduleNavigationSnapshotRefresh() {
     });
 }
 
+function getNavigationSignature() {
+    const context = getContext?.();
+    if (!context) {
+        return 'no-context';
+    }
+    const characterId = context.characterId ?? '';
+    const groupId = context.groupId ?? '';
+    const chatId = context.getCurrentChatId?.() ?? context.chatId ?? '';
+    return `${groupId}:${characterId}:${chatId}:${isHomepage() ? 'home' : 'chat'}`;
+}
+
+function startNavigationSnapshotMonitor() {
+    if (state.navigationMonitorTimer) {
+        return;
+    }
+    state.navigationMonitorSignature = getNavigationSignature();
+    state.navigationMonitorTimer = setInterval(() => {
+        const signature = getNavigationSignature();
+        if (signature !== state.navigationMonitorSignature) {
+            state.navigationMonitorSignature = signature;
+            handleNavigationStateChanged();
+            return;
+        }
+        updateLastChatCharacterSnapshot();
+    }, 1000);
+}
+
 function handleNavigationStateChanged() {
+    state.navigationMonitorSignature = getNavigationSignature();
     updateLastChatCharacterSnapshot();
     scheduleNavigationSnapshotRefresh();
     handleHomepageStateChanged();
@@ -7526,6 +7566,7 @@ async function init() {
     };
     await tryMount();
     registerEventHandlers();
+    startNavigationSnapshotMonitor();
 }
 
 function registerEventHandlers() {
