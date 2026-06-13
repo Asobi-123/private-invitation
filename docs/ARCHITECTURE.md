@@ -87,17 +87,22 @@ resolvePoolCharacters()
   ├─ if any anger-ready character exists
   │     → pick from anger candidates, mode = anger
   └─ else
-        → pick one normal pool character
-        → resolveInvitationModeAfterAnger(character)
-             ├─ birthday / special date, if not consumed today
-             ├─ reunion, if last chat age reaches the threshold
-             ├─ jealousy, if the last-chat snapshot is recent and chance passes
-             └─ primary
+        ├─ if a recent last-chat departure exists and has not been attempted
+        │     ├─ collect jealousy candidates from the pool
+        │     │     (different from last-chat character, has jealousy lines, weight > 0)
+        │     ├─ roll jealousyChance once for this departure
+        │     └─ if hit → weighted-pick by characterJealousyChances, mode = jealousy
+        └─ otherwise / miss
+              → pick one normal pool character
+              → resolveInvitationModeAfterAnger(character)
+                   ├─ birthday / special date, if not consumed today
+                   ├─ reunion, if last chat age reaches the threshold
+                   └─ primary
 ```
 
 Only one mode is used per invitation. There are no combined pools such as anger-birthday or reunion-jealousy. Birthday mode writes a date-level consumption marker after a successful display, so the same local day does not repeatedly enter birthday mode.
 
-The last-chat snapshot is updated from SillyTavern navigation events. While on a character chat page, the active character is stored as `state.activeChatCharacter`; when returning to the homepage, that snapshot is copied to `state.lastChatCharacter` with `leftAt`. Jealousy uses that snapshot only if the newly drawn character is different. The drawn character may override the global jealousy probability through `characterJealousyChances`; otherwise `jealousyChance` is the default.
+The last-chat snapshot is updated from SillyTavern navigation events. While on a character chat page, the active character is stored as `state.activeChatCharacter`; when returning to the homepage, that snapshot is copied to `state.lastChatCharacter` with `leftAt` and a runtime `jealousyToken`. Jealousy is attempted once per token. `jealousyChance` controls whether a jealousy event happens for that departure; `characterJealousyChances` controls candidate appearance weight when the event hits. Missing per-character weights fall back to `jealousyChance`.
 
 Birthday / special-date resolution checks the drawn character first: `characterUserBirthdays`, `characterBirthdays`, and `characterDateEvents`. Global `userBirthday` and `customDateEvents` remain defaults, not the only source of date events.
 

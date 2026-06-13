@@ -211,7 +211,7 @@
                 <details class="pi-card pi-card--foldable">
                     <summary class="pi-card-summary">
                         <strong data-i18n="console.copy.jealousyPoolTitle">吃醋文案池</strong>
-                        <span class="pi-muted" data-i18n="console.copy.jealousyPoolNote">从另一个角色聊天回主页后，当前角色被抽中时可触发。</span>
+                        <span class="pi-muted" data-i18n="console.copy.jealousyPoolNote">从另一个角色聊天回主页后，可从有吃醋文案池的角色中触发。</span>
                     </summary>
                     <div class="pi-field">
                         <label for="pi_character_jealousy_label" data-i18n="console.jealousy.characterLabel">本角色吃醋称呼</label>
@@ -219,9 +219,9 @@
                         <small class="pi-muted" data-i18n="console.jealousy.characterLabelNote">用于别人提到这个角色时的 {lastChar}。留空则用角色名。</small>
                     </div>
                     <div class="pi-field">
-                        <label for="pi_character_jealousy_chance" data-i18n="console.jealousy.characterChance">本角色吃醋概率 %</label>
-                        <input id="pi_character_jealousy_chance" type="number" min="0" max="100" step="1" class="text_pole pi-number" data-i18n-placeholder="console.jealousy.characterChancePlaceholder" placeholder="留空使用全局默认">
-                        <small class="pi-muted" data-i18n="console.jealousy.characterChanceNote">留空时使用运行控制里的全局默认概率。</small>
+                        <label for="pi_character_jealousy_chance" data-i18n="console.jealousy.characterChance">本角色吃醋出场权重 %</label>
+                        <input id="pi_character_jealousy_chance" type="number" min="0" max="100" step="1" class="text_pole pi-number" data-i18n-placeholder="console.jealousy.characterChancePlaceholder" placeholder="留空使用事件概率">
+                        <small class="pi-muted" data-i18n="console.jealousy.characterChanceNote">留空时使用运行控制里的事件概率作为默认权重。</small>
                     </div>
                     <div class="pi-actions-row pi-actions-row--compact">
                         <button id="pi_jealousy_test" type="button" class="menu_button" data-i18n="console.jealousy.testButton">测试吃醋邀约</button>
@@ -1054,7 +1054,7 @@
                 <div class="pi-card">
                     <div class="pi-card-head">
                         <strong data-i18n="console.control.jealousyTitle">吃醋 / 修罗场</strong>
-                        <span class="pi-muted" data-i18n="console.control.jealousyNote">只在从其他角色聊天回主页后的短时间窗口内判定。</span>
+                        <span class="pi-muted" data-i18n="console.control.jealousyNote">从其他角色聊天回主页后只判定一次；未命中则继续普通邀约。</span>
                     </div>
                     <div class="pi-field">
                         <label class="pi-switch">
@@ -1064,7 +1064,7 @@
                     </div>
                     <div class="pi-home-rule-grid">
                         <div class="pi-field">
-                            <label for="pi_jealousy_chance" data-i18n="console.control.jealousyChance">触发概率 %</label>
+                            <label for="pi_jealousy_chance" data-i18n="console.control.jealousyChance">吃醋事件触发概率 %</label>
                             <input id="pi_jealousy_chance" type="number" min="0" max="100" step="1" class="text_pole pi-number">
                         </div>
                         <div class="pi-field">

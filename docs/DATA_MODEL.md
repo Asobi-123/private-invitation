@@ -151,7 +151,7 @@ Representative shape:
 
 Contextual mode pools mirror the same per-character shape:
 
-- `jealousyMessages`: lines used when the selected character reacts to the last chat character.
+- `jealousyMessages`: lines used when a character is selected by the post-chat jealousy event and reacts to the last chat character.
 - `birthdayMessages`: lines used on user birthday, character birthday, built-in holidays, or custom dates. If empty, birthday mode falls back to `characterMessages`.
 - `reunionMessages`: lines used when a randomly drawn character has not been chatted with for at least `reunionThresholdDays`.
 - `jealousyDrafts`, `birthdayDrafts`, `reunionDrafts`: AI draft pools for the matching contextual modes.
@@ -159,7 +159,7 @@ Contextual mode pools mirror the same per-character shape:
 Per-character contextual settings:
 
 - `characterJealousyLabels`: optional display label used as `{lastChar}` when another character refers to this character.
-- `characterJealousyChances`: optional per-character jealousy probability override. Missing keys fall back to `jealousyChance`.
+- `characterJealousyChances`: optional per-character jealousy appearance weight. Missing keys fall back to `jealousyChance` as the default weight.
 - `characterBirthdays`: per-character `MM-DD` birthday map.
 - `characterUserBirthdays`: optional per-character `MM-DD` map for user birthday variants inside that character's setting.
 - `characterDateEvents`: per-character custom special date text. Same line format as `customDateEvents`.
@@ -177,7 +177,7 @@ Date consumption:
 
 Contextual mode trigger settings:
 
-- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the global default when the current character has no `characterJealousyChances` value.
+- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the one-shot global event probability after leaving a character chat. If the event hits, eligible characters are picked by `characterJealousyChances` weight. Missing weights fall back to `jealousyChance`.
 - `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for the drawn character.
 - `reunionEnabled`, `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
 

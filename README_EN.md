@@ -34,7 +34,7 @@ A SillyTavern extension that turns the homepage into a character-recall surface.
 - Accepting any invitation resets the count (configurable)
 
 ### Contextual callbacks
-- **Jealousy / triangle**: after returning home from character A, character B can react to the last-chat snapshot if drawn
+- **Jealousy / triangle**: after returning home from character A, a global event roll runs first; on hit, character B is picked from jealousy-pool characters by per-character weight
 - **Time / special dates**: saved lines support variables like `{time}`, `{period}`, and `{todayEvent}`; birthday / special dates can be configured per character
 - **SSR reunion**: after a character is drawn, long chat absence can trigger a gold visual treatment and reunion lines
 - One popup uses exactly one form, so no combined copy pools are required; birthday mode is consumed for the local date after a successful display
@@ -156,7 +156,7 @@ Tags with attributes match too — entering `div` also strips `<div class="x">..
 | **Anger** | Reject count reaches threshold (default 5) | Red-black rage form, countdown auto-enters chat |
 | **Birthday / special date** | Drawn character matches a current date event | Uses the special-date pool; does not repeat after successful display that day |
 | **SSR reunion** | Drawn character has not been chatted with for the configured days | Gold visual treatment and reunion pool |
-| **Jealousy / triangle** | Drawn character differs from the last-chat character and is within the time window | Uses last-chat variables |
+| **Jealousy / triangle** | A jealousy event hits after leaving the last character chat | Picks from jealousy-pool characters by weight and uses last-chat variables |
 
 Main, retention, anger, jealousy, birthday, and reunion all have independent AI draft generation. Runtime homepage popups still only read saved pools and never call AI on the fly.
 

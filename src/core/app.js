@@ -713,6 +713,7 @@ const state = {
     lastChatTimeCache: new Map(),
     activeChatCharacter: null,
     lastChatCharacter: null,
+    lastChatJealousyAttemptToken: '',
     invitationFromConsoleTest: false,
     aiBatchAbortRequested: false,
     aiBatchActiveKind: null,
@@ -3340,10 +3341,17 @@ async function maybeShowHomepageInvitation(force = false) {
         characterInfo = pickRandom(angerCandidates);
         mode = 'anger';
     } else {
-        characterInfo = pickRandom(pool);
-        const resolved = await resolveInvitationModeAfterAnger(characterInfo);
-        mode = resolved.mode;
-        templateContext = resolved.templateContext;
+        const jealousyDispatch = resolveJealousyDispatch(pool, { consumeAttempt: !force });
+        if (jealousyDispatch) {
+            characterInfo = jealousyDispatch.characterInfo;
+            mode = 'jealousy';
+            templateContext = jealousyDispatch.templateContext;
+        } else {
+            characterInfo = pickRandom(pool);
+            const resolved = await resolveInvitationModeAfterAnger(characterInfo);
+            mode = resolved.mode;
+            templateContext = resolved.templateContext;
+        }
     }
     showInvitation(characterInfo, mode, {
         templateContext,
@@ -3389,6 +3397,27 @@ function pickRandom(list) {
         return null;
     }
     return list[Math.floor(Math.random() * list.length)];
+}
+
+function pickWeightedRandom(list, getWeight) {
+    const weighted = (Array.isArray(list) ? list : [])
+        .map((entry) => ({
+            entry,
+            weight: Math.max(0, Number(getWeight(entry)) || 0),
+        }))
+        .filter((item) => item.weight > 0);
+    const total = weighted.reduce((sum, item) => sum + item.weight, 0);
+    if (total <= 0) {
+        return null;
+    }
+    let cursor = Math.random() * total;
+    for (const item of weighted) {
+        cursor -= item.weight;
+        if (cursor <= 0) {
+            return item.entry;
+        }
+    }
+    return weighted[weighted.length - 1]?.entry || null;
 }
 
 function escapeHtml(value) {
@@ -3659,15 +3688,12 @@ function getTodayDateEvents(characterInfo, now = new Date()) {
     return events.filter((event) => !isDateEventConsumed(event));
 }
 
-function getJealousyContext(characterInfo, now = new Date()) {
+function getJealousyDepartureContext(now = new Date()) {
     const settings = ensureSettings();
-    if (!settings.jealousyEnabled || !characterInfo?.key || !state.lastChatCharacter?.key) {
+    if (!settings.jealousyEnabled || !state.lastChatCharacter?.key) {
         return null;
     }
     const last = state.lastChatCharacter;
-    if (last.key === characterInfo.key) {
-        return null;
-    }
     const leftAt = parseTimestamp(last.leftAt);
     if (!leftAt) {
         return null;
@@ -3677,14 +3703,53 @@ function getJealousyContext(characterInfo, now = new Date()) {
     if (elapsedMs < 0 || elapsedMs > windowMs) {
         return null;
     }
-    const chance = getCharacterJealousyChance(characterInfo);
-    if (chance <= 0 || Math.random() * 100 >= chance) {
+    return {
+        last,
+        token: last.jealousyToken || `${last.key}:${last.chatId || ''}:${leftAt}`,
+        context: {
+            lastChar: last.label || last.name || '',
+            lastChat: last.chatId || '',
+            minutesSinceLastChat: String(Math.max(0, Math.floor(elapsedMs / 60000))),
+        },
+    };
+}
+
+function resolveJealousyDispatch(pool, options = {}) {
+    const settings = ensureSettings();
+    const now = options.now instanceof Date ? options.now : new Date();
+    const departure = getJealousyDepartureContext(now);
+    if (!departure || state.lastChatJealousyAttemptToken === departure.token) {
         return null;
     }
+
+    const candidates = (Array.isArray(pool) ? pool : []).filter((characterInfo) => {
+        if (!characterInfo?.key || characterInfo.key === departure.last.key) {
+            return false;
+        }
+        if (getCharacterJealousyChance(characterInfo) <= 0) {
+            return false;
+        }
+        return getPoolLines(characterInfo, 'jealousy').length > 0;
+    });
+    if (!candidates.length) {
+        return null;
+    }
+
+    if (options.consumeAttempt !== false) {
+        state.lastChatJealousyAttemptToken = departure.token;
+    }
+
+    if (settings.jealousyChance <= 0 || Math.random() * 100 >= settings.jealousyChance) {
+        return null;
+    }
+    const characterInfo = pickWeightedRandom(candidates, getCharacterJealousyChance);
+    if (!characterInfo) {
+        return null;
+    }
+    const base = buildBaseTemplateContext(characterInfo, { now });
     return {
-        lastChar: last.label || last.name || '',
-        lastChat: last.chatId || '',
-        minutesSinceLastChat: String(Math.max(0, Math.floor(elapsedMs / 60000))),
+        characterInfo,
+        templateContext: { ...base, ...departure.context },
     };
 }
 
@@ -3764,14 +3829,6 @@ async function resolveInvitationModeAfterAnger(characterInfo) {
         return {
             mode: 'reunion',
             templateContext: { ...base, ...reunion },
-        };
-    }
-
-    const jealousy = getJealousyContext(characterInfo, now);
-    if (jealousy) {
-        return {
-            mode: 'jealousy',
-            templateContext: { ...base, ...jealousy },
         };
     }
 
@@ -4632,6 +4689,7 @@ function updateLastChatCharacterSnapshot() {
             chatId: context.getCurrentChatId?.() ?? context.chatId ?? '',
             seenAt: Date.now(),
             leftAt: 0,
+            jealousyToken: '',
         };
         state.activeChatCharacter = snapshot;
         state.lastChatCharacter = snapshot;
@@ -4639,9 +4697,11 @@ function updateLastChatCharacterSnapshot() {
     }
 
     if (state.activeChatCharacter?.key) {
+        const leftAt = Date.now();
         state.lastChatCharacter = {
             ...state.activeChatCharacter,
-            leftAt: Date.now(),
+            leftAt,
+            jealousyToken: `${state.activeChatCharacter.key}:${state.activeChatCharacter.chatId || ''}:${leftAt}`,
         };
         state.activeChatCharacter = null;
     }

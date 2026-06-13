@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Contextual homepage modes after anger scheduling: jealousy, birthday / special date, and SSR reunion.
 - Time and date template variables for saved copy pools, including `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, and `{daysUntilBirthday}`.
 - Last-chat snapshot support for jealousy lines with `{lastChar}`, `{lastChat}`, and `{minutesSinceLastChat}`.
-- Per-character jealousy chance overrides, so different characters can react with different probability.
+- Per-character jealousy appearance weights, so characters with jealousy pools can surface at different rates after a post-chat jealousy event hits.
 - Per-character user birthday and special-date settings, alongside character birthdays and global defaults.
 - Birthday / special-date one-day guard: once birthday mode successfully displays on a local date, later callbacks that day skip birthday mode.
 - SSR reunion checks based on `date_last_chat` or `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
@@ -21,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Homepage mode selection keeps anger-ready characters as the outer priority, then resolves birthday, reunion, jealousy, or primary only for the already drawn normal character.
-- Global jealousy chance, user birthday, and custom date events now act as defaults when the drawn character has no specific override.
+- Homepage mode selection keeps anger-ready characters as the outer priority, then attempts a one-shot post-chat jealousy event before falling back to the normal birthday / reunion / primary draw.
+- Global jealousy chance now controls whether the post-chat jealousy event happens; per-character jealousy values are candidate appearance weights. User birthday and custom date events remain defaults when the drawn character has no specific override.
 
 ## [1.0.0] - 2026-05-27
 
