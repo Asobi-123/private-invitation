@@ -177,7 +177,7 @@ Date consumption:
 
 Contextual mode trigger settings:
 
-- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the one-shot global event probability after leaving a character chat. If the event hits, eligible characters are picked by `characterJealousyChances` weight. Missing weights fall back to `jealousyChance`.
+- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the global event probability for a homepage callback inside the recent-chat window. If the event hits, eligible characters are picked by `characterJealousyChances` weight. Missing weights fall back to `jealousyChance`.
 - `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for the drawn character.
 - `reunionEnabled`, `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
 

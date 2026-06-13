@@ -87,10 +87,10 @@ resolvePoolCharacters()
   ├─ if any anger-ready character exists
   │     → pick from anger candidates, mode = anger
   └─ else
-        ├─ if a recent last-chat departure exists and has not been attempted
+        ├─ if a recent last-chat departure exists
         │     ├─ collect jealousy candidates from the pool
         │     │     (different from last-chat character, has jealousy lines, weight > 0)
-        │     ├─ roll jealousyChance once for this departure
+        │     ├─ roll jealousyChance for this homepage callback
         │     └─ if hit → weighted-pick by characterJealousyChances, mode = jealousy
         └─ otherwise / miss
               → pick one normal pool character
@@ -102,7 +102,7 @@ resolvePoolCharacters()
 
 Only one mode is used per invitation. There are no combined pools such as anger-birthday or reunion-jealousy. Birthday mode writes a date-level consumption marker after a successful display, so the same local day does not repeatedly enter birthday mode.
 
-The last-chat snapshot is updated from SillyTavern navigation events. While on a character chat page, the active character is stored as `state.activeChatCharacter`; when returning to the homepage, that snapshot is copied to `state.lastChatCharacter` with `leftAt` and a runtime `jealousyToken`. Jealousy is attempted once per token. `jealousyChance` controls whether a jealousy event happens for that departure; `characterJealousyChances` controls candidate appearance weight when the event hits. Missing per-character weights fall back to `jealousyChance`.
+The last-chat snapshot is updated from SillyTavern navigation events. While on a character chat page, the active character is stored as `state.activeChatCharacter`; when returning to the homepage, that snapshot is copied to `state.lastChatCharacter` with `leftAt` and mirrored to `sessionStorage`. This lets a refresh on the homepage keep the recent-chat context until the configured window expires. `jealousyChance` controls whether a jealousy event happens for a homepage callback inside that window; `characterJealousyChances` controls candidate appearance weight when the event hits. Missing per-character weights fall back to `jealousyChance`.
 
 Birthday / special-date resolution checks the drawn character first: `characterUserBirthdays`, `characterBirthdays`, and `characterDateEvents`. Global `userBirthday` and `customDateEvents` remain defaults, not the only source of date events.
 

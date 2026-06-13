@@ -70,6 +70,7 @@ const angerIntensityKeys = ['restrained', 'direct', 'outburst'];
 const invitationModeKeys = ['primary', 'retention', 'anger', 'jealousy', 'birthday', 'reunion'];
 const contextualAiModeKeys = ['jealousy', 'birthday', 'reunion'];
 const reunionNoChatPolicyKeys = ['skip', 'trigger'];
+const lastChatSnapshotStorageKey = `${SETTINGS_KEY}:lastChatCharacter`;
 
 const builtinDateEvents = [
     { key: 'holiday:01-01', date: '01-01', nameKey: 'invitation.event.newYear' },
@@ -713,7 +714,6 @@ const state = {
     lastChatTimeCache: new Map(),
     activeChatCharacter: null,
     lastChatCharacter: null,
-    lastChatJealousyAttemptToken: '',
     invitationFromConsoleTest: false,
     aiBatchAbortRequested: false,
     aiBatchActiveKind: null,
@@ -1263,6 +1263,47 @@ function formatDisplayDate(timestamp) {
     }
     const date = new Date(time);
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function normalizeLastChatSnapshot(value) {
+    if (!value || typeof value !== 'object' || !value.key) {
+        return null;
+    }
+    const leftAt = parseTimestamp(value.leftAt);
+    if (!leftAt) {
+        return null;
+    }
+    return {
+        key: String(value.key || ''),
+        id: value.id,
+        name: String(value.name || ''),
+        label: String(value.label || value.name || ''),
+        avatar: String(value.avatar || ''),
+        chatId: String(value.chatId || ''),
+        seenAt: parseTimestamp(value.seenAt) || leftAt,
+        leftAt,
+    };
+}
+
+function readStoredLastChatSnapshot() {
+    try {
+        return normalizeLastChatSnapshot(JSON.parse(sessionStorage.getItem(lastChatSnapshotStorageKey) || 'null'));
+    } catch {
+        return null;
+    }
+}
+
+function writeStoredLastChatSnapshot(snapshot) {
+    const normalized = normalizeLastChatSnapshot(snapshot);
+    try {
+        if (normalized) {
+            sessionStorage.setItem(lastChatSnapshotStorageKey, JSON.stringify(normalized));
+        } else {
+            sessionStorage.removeItem(lastChatSnapshotStorageKey);
+        }
+    } catch {
+        // Storage can be unavailable in some embedded/private contexts; runtime state still works.
+    }
 }
 
 function getDaysBetween(fromMs, toMs = Date.now()) {
@@ -3341,7 +3382,7 @@ async function maybeShowHomepageInvitation(force = false) {
         characterInfo = pickRandom(angerCandidates);
         mode = 'anger';
     } else {
-        const jealousyDispatch = resolveJealousyDispatch(pool, { consumeAttempt: !force });
+        const jealousyDispatch = resolveJealousyDispatch(pool);
         if (jealousyDispatch) {
             characterInfo = jealousyDispatch.characterInfo;
             mode = 'jealousy';
@@ -3690,10 +3731,14 @@ function getTodayDateEvents(characterInfo, now = new Date()) {
 
 function getJealousyDepartureContext(now = new Date()) {
     const settings = ensureSettings();
-    if (!settings.jealousyEnabled || !state.lastChatCharacter?.key) {
+    if (!settings.jealousyEnabled) {
         return null;
     }
-    const last = state.lastChatCharacter;
+    const last = normalizeLastChatSnapshot(state.lastChatCharacter) || readStoredLastChatSnapshot();
+    if (!last?.key) {
+        return null;
+    }
+    state.lastChatCharacter = last;
     const leftAt = parseTimestamp(last.leftAt);
     if (!leftAt) {
         return null;
@@ -3701,11 +3746,11 @@ function getJealousyDepartureContext(now = new Date()) {
     const elapsedMs = now.getTime() - leftAt;
     const windowMs = settings.jealousyWindowMinutes * 60 * 1000;
     if (elapsedMs < 0 || elapsedMs > windowMs) {
+        writeStoredLastChatSnapshot(null);
         return null;
     }
     return {
         last,
-        token: last.jealousyToken || `${last.key}:${last.chatId || ''}:${leftAt}`,
         context: {
             lastChar: last.label || last.name || '',
             lastChat: last.chatId || '',
@@ -3718,7 +3763,7 @@ function resolveJealousyDispatch(pool, options = {}) {
     const settings = ensureSettings();
     const now = options.now instanceof Date ? options.now : new Date();
     const departure = getJealousyDepartureContext(now);
-    if (!departure || state.lastChatJealousyAttemptToken === departure.token) {
+    if (!departure) {
         return null;
     }
 
@@ -3733,10 +3778,6 @@ function resolveJealousyDispatch(pool, options = {}) {
     });
     if (!candidates.length) {
         return null;
-    }
-
-    if (options.consumeAttempt !== false) {
-        state.lastChatJealousyAttemptToken = departure.token;
     }
 
     if (settings.jealousyChance <= 0 || Math.random() * 100 >= settings.jealousyChance) {
@@ -4689,7 +4730,6 @@ function updateLastChatCharacterSnapshot() {
             chatId: context.getCurrentChatId?.() ?? context.chatId ?? '',
             seenAt: Date.now(),
             leftAt: 0,
-            jealousyToken: '',
         };
         state.activeChatCharacter = snapshot;
         state.lastChatCharacter = snapshot;
@@ -4701,8 +4741,8 @@ function updateLastChatCharacterSnapshot() {
         state.lastChatCharacter = {
             ...state.activeChatCharacter,
             leftAt,
-            jealousyToken: `${state.activeChatCharacter.key}:${state.activeChatCharacter.chatId || ''}:${leftAt}`,
         };
+        writeStoredLastChatSnapshot(state.lastChatCharacter);
         state.activeChatCharacter = null;
     }
 }

@@ -21,8 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Homepage mode selection keeps anger-ready characters as the outer priority, then attempts a one-shot post-chat jealousy event before falling back to the normal birthday / reunion / primary draw.
+- Homepage mode selection keeps anger-ready characters as the outer priority, then attempts a post-chat jealousy event before falling back to the normal birthday / reunion / primary draw.
 - Global jealousy chance now controls whether the post-chat jealousy event happens; per-character jealousy values are candidate appearance weights. User birthday and custom date events remain defaults when the drawn character has no specific override.
+- Recent last-chat snapshots are mirrored to `sessionStorage`, so refreshing the homepage during the configured jealousy window can still test or trigger jealousy callbacks.
 
 ## [1.0.0] - 2026-05-27
 

@@ -718,7 +718,7 @@
   "console.reunion.draftEmpty": "Reunion drafts are empty. Use the button above to generate some.",
   "console.reunion.draftEmptyWarn": "Reunion drafts are empty. Generate some first.",
   "console.control.jealousyTitle": "Jealousy / triangle",
-  "console.control.jealousyNote": "Checked once after returning home from another character chat. If it misses, normal invitations continue.",
+  "console.control.jealousyNote": "Checked within the time window after returning home from another character chat. If it misses, normal invitations continue.",
   "console.control.jealousyEnabled": "Enable jealousy mode",
   "console.control.jealousyChance": "Jealousy event trigger chance %",
   "console.control.jealousyWindowMinutes": "Valid minutes after leaving last chat",

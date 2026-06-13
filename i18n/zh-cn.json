@@ -718,7 +718,7 @@
   "console.reunion.draftEmpty": "久别重逢草稿区为空，点上面的按钮让 AI 写几条。",
   "console.reunion.draftEmptyWarn": "久别重逢草稿区是空的，先生成几条。",
   "console.control.jealousyTitle": "吃醋 / 修罗场",
-  "console.control.jealousyNote": "从其他角色聊天回主页后只判定一次；未命中则继续普通邀约。",
+  "console.control.jealousyNote": "从其他角色聊天回主页后的时间窗口内判定；未命中则继续普通邀约。",
   "console.control.jealousyEnabled": "启用吃醋模式",
   "console.control.jealousyChance": "吃醋事件触发概率 %",
   "console.control.jealousyWindowMinutes": "离开上个聊天后的有效分钟",
