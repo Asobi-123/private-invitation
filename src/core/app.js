@@ -705,6 +705,7 @@ const state = {
     wasHomepage: false,
     homepageCheckTimer: null,
     homepageRetryTimer: null,
+    navigationSnapshotTimers: [],
     homepageStableSince: 0,
     homepageInvitePending: false,
     homepageInviteLoading: false,
@@ -1304,6 +1305,38 @@ function writeStoredLastChatSnapshot(snapshot) {
     } catch {
         // Storage can be unavailable in some embedded/private contexts; runtime state still works.
     }
+}
+
+function rememberActiveChatCharacter(characterInfo, context = getContext?.()) {
+    if (!characterInfo?.key) {
+        return;
+    }
+    const snapshot = {
+        key: characterInfo.key,
+        id: characterInfo.id,
+        name: characterInfo.name,
+        label: getCharacterJealousyLabel(characterInfo),
+        avatar: characterInfo.avatar,
+        chatId: context?.getCurrentChatId?.() ?? context?.chatId ?? '',
+        seenAt: Date.now(),
+        leftAt: 0,
+    };
+    state.activeChatCharacter = snapshot;
+    state.lastChatCharacter = snapshot;
+    writeStoredLastChatSnapshot(null);
+}
+
+function finalizeActiveChatDeparture(leftAt = Date.now()) {
+    if (!state.activeChatCharacter?.key) {
+        return null;
+    }
+    state.lastChatCharacter = {
+        ...state.activeChatCharacter,
+        leftAt,
+    };
+    writeStoredLastChatSnapshot(state.lastChatCharacter);
+    state.activeChatCharacter = null;
+    return state.lastChatCharacter;
 }
 
 function getDaysBetween(fromMs, toMs = Date.now()) {
@@ -3170,6 +3203,8 @@ async function acceptInvitation(characterInfo, modeOrRetention = 'primary') {
         setRejectCount(characterInfo, 0);
     }
     await selectCharacterById(Number(characterInfo.id), { switchMenu: true });
+    rememberActiveChatCharacter(characterInfo);
+    scheduleNavigationSnapshotRefresh();
     setTimeout(() => printCharactersDebounced?.(), 250);
     return true;
 }
@@ -3733,6 +3768,9 @@ function getJealousyDepartureContext(now = new Date()) {
     const settings = ensureSettings();
     if (!settings.jealousyEnabled) {
         return null;
+    }
+    if (isHomepage()) {
+        finalizeActiveChatDeparture(now.getTime());
     }
     const last = normalizeLastChatSnapshot(state.lastChatCharacter) || readStoredLastChatSnapshot();
     if (!last?.key) {
@@ -4721,34 +4759,27 @@ function updateLastChatCharacterSnapshot() {
         if (!characterInfo?.key) {
             return;
         }
-        const snapshot = {
-            key: characterInfo.key,
-            id: characterInfo.id,
-            name: characterInfo.name,
-            label: getCharacterJealousyLabel(characterInfo),
-            avatar: characterInfo.avatar,
-            chatId: context.getCurrentChatId?.() ?? context.chatId ?? '',
-            seenAt: Date.now(),
-            leftAt: 0,
-        };
-        state.activeChatCharacter = snapshot;
-        state.lastChatCharacter = snapshot;
+        rememberActiveChatCharacter(characterInfo, context);
         return;
     }
 
-    if (state.activeChatCharacter?.key) {
-        const leftAt = Date.now();
-        state.lastChatCharacter = {
-            ...state.activeChatCharacter,
-            leftAt,
-        };
-        writeStoredLastChatSnapshot(state.lastChatCharacter);
-        state.activeChatCharacter = null;
-    }
+    finalizeActiveChatDeparture();
+}
+
+function scheduleNavigationSnapshotRefresh() {
+    state.navigationSnapshotTimers.forEach((timer) => clearTimeout(timer));
+    state.navigationSnapshotTimers = [250, 900].map((delay) => {
+        const timer = setTimeout(() => {
+            updateLastChatCharacterSnapshot();
+            state.navigationSnapshotTimers = state.navigationSnapshotTimers.filter((entry) => entry !== timer);
+        }, delay);
+        return timer;
+    });
 }
 
 function handleNavigationStateChanged() {
     updateLastChatCharacterSnapshot();
+    scheduleNavigationSnapshotRefresh();
     handleHomepageStateChanged();
 }
 

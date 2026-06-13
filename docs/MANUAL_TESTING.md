@@ -190,14 +190,16 @@ Steps:
 2. Save jealousy, birthday, and reunion lines for one target character. Keep other characters' jealousy pools empty for the deterministic test.
 3. Enable jealousy mode, set global event chance to 100%, set the target character's jealousy appearance weight to 100%, and set the window to at least 10 minutes.
 4. Open a different character chat, then return to the homepage and trigger an invitation.
-5. Set the test character's user birthday, character birthday, or special date to today's `MM-DD`, then trigger the test character.
-6. Trigger birthday mode again on the same local date.
-7. Enable reunion mode, set `reunionThresholdDays` low enough to match an old chat, or use the manual reunion test button.
-8. Test the manual buttons for jealousy, birthday, and reunion from the Copy tab.
+5. Enter the jealousy invitation character, switch to another character chat, return to the homepage, and verify the next jealousy trigger uses the new last-chat character instead of the previous one.
+6. Set the test character's user birthday, character birthday, or special date to today's `MM-DD`, then trigger the test character.
+7. Trigger birthday mode again on the same local date.
+8. Enable reunion mode, set `reunionThresholdDays` low enough to match an old chat, or use the manual reunion test button.
+9. Test the manual buttons for jealousy, birthday, and reunion from the Copy tab.
 
 Expected:
 
 - Jealousy mode only triggers when the last-chat character exists, the window is valid, the global event roll hits, and at least one different pool character has jealousy lines with positive appearance weight.
+- Entering a new character clears the older stored departure snapshot; returning home writes the new character as the last-chat snapshot.
 - For normal random draws, birthday mode wins over reunion after anger; successful jealousy dispatch happens before the normal draw.
 - After birthday mode is consumed for the date, normal draws for the same character can still enter reunion or primary mode.
 - Reunion mode only checks the already drawn character and does not change draw probability.
