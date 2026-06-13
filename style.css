@@ -140,6 +140,83 @@
     --pi-accent-soft: color-mix(in srgb, var(--SmartThemeQuoteColor, #c79416) 18%, transparent);
 }
 
+.pi-modal {
+    --pi-control-bg: var(--pi-field);
+    --pi-control-bg-disabled: color-mix(in srgb, var(--pi-field) 68%, var(--pi-surface));
+    --pi-control-text: var(--pi-text);
+    --pi-control-text-muted: var(--pi-dim);
+    --pi-control-border: color-mix(in srgb, var(--pi-border) 66%, transparent);
+    --pi-control-border-focus: color-mix(in srgb, var(--pi-accent) 72%, var(--pi-border));
+    --pi-control-focus-ring: color-mix(in srgb, var(--pi-accent) 22%, transparent);
+}
+
+.pi-modal :is(
+    input.text_pole,
+    textarea.text_pole,
+    select.text_pole,
+    .pi-textarea,
+    .pi-api-profile-select,
+    .pi-api-model-select
+):where(
+    :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
+) {
+    background: var(--pi-control-bg);
+    color: var(--pi-control-text);
+    border: 1px solid var(--pi-control-border);
+    caret-color: var(--pi-control-text);
+}
+
+.pi-modal :is(
+    input.text_pole,
+    textarea.text_pole,
+    .pi-textarea
+):where(
+    :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
+)::placeholder {
+    color: var(--pi-control-text-muted);
+    opacity: 1;
+}
+
+.pi-modal :is(
+    input.text_pole,
+    textarea.text_pole,
+    select.text_pole,
+    .pi-textarea,
+    .pi-api-profile-select,
+    .pi-api-model-select
+):where(
+    :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
+):focus-visible {
+    border-color: var(--pi-control-border-focus);
+    outline: 2px solid var(--pi-control-focus-ring);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 1px var(--pi-control-border-focus);
+}
+
+.pi-modal :is(
+    input.text_pole,
+    textarea.text_pole,
+    select.text_pole,
+    .pi-textarea,
+    .pi-api-profile-select,
+    .pi-api-model-select
+):where(
+    :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
+):is(:disabled, [readonly]) {
+    background: var(--pi-control-bg-disabled);
+    color: var(--pi-control-text-muted);
+    border-color: color-mix(in srgb, var(--pi-control-border) 70%, transparent);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.pi-modal select.text_pole option,
+.pi-modal .pi-api-profile-select option,
+.pi-modal .pi-api-model-select option {
+    background: var(--pi-control-bg);
+    color: var(--pi-control-text);
+}
+
 .pi-pool-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -1382,19 +1459,26 @@
     cursor: text;
 }
 
+.pi-tag-chip-pool:focus-within {
+    border-color: var(--pi-control-border-focus);
+    box-shadow: 0 0 0 2px var(--pi-control-focus-ring);
+}
+
 .pi-tag-chip-pool__input {
     flex: 1 1 120px;
     min-width: 80px;
     border: 0;
     background: transparent;
-    color: var(--pi-text);
+    color: var(--pi-control-text, var(--pi-text));
+    caret-color: var(--pi-control-text, var(--pi-text));
     font-size: 13px;
     padding: 2px 4px;
     outline: none;
 }
 
 .pi-tag-chip-pool__input::placeholder {
-    color: var(--pi-dim);
+    color: var(--pi-control-text-muted, var(--pi-dim));
+    opacity: 1;
 }
 
 .pi-chip--filter {

@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Entering a new character now overwrites older runtime jealousy snapshots, and navigation snapshots are sampled again after short delays to avoid stale last-chat data during consecutive jealousy tests.
 - A lightweight navigation monitor now catches missed SillyTavern navigation events so last-chat snapshots do not depend on a single event firing at the right time.
 
+### Fixed
+
+- Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
+
 ## [1.0.0] - 2026-05-27
 
 Initial public release.
