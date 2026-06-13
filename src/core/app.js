@@ -71,6 +71,17 @@ const invitationModeKeys = ['primary', 'retention', 'anger', 'jealousy', 'birthd
 const contextualAiModeKeys = ['jealousy', 'birthday', 'reunion'];
 const reunionNoChatPolicyKeys = ['skip', 'trigger'];
 const lastChatSnapshotStorageKey = `${SETTINGS_KEY}:lastChatCharacter`;
+const birthdayLineTagSeparators = ['--', '==', '：：', '::'];
+const birthdayGenericTags = ['通用', 'general', 'generic', 'default', 'common'];
+const birthdayUserBirthdayTags = ['用户生日', 'user birthday', 'user-birthday', 'userbirthday'];
+const birthdayCharacterBirthdayTags = ['角色生日', 'character birthday', 'character-birthday', 'characterbirthday'];
+const builtinDateEventLabelAliases = {
+    'invitation.event.newYear': ['元旦', 'new year', 'new year day', "new year's day"],
+    'invitation.event.valentine': ['情人节', 'valentine', 'valentines day', "valentine's day"],
+    'invitation.event.christmasEve': ['平安夜', 'christmas eve'],
+    'invitation.event.christmas': ['圣诞节', 'christmas', 'christmas day'],
+    'invitation.event.newYearEve': ['跨年夜', 'new year eve', "new year's eve"],
+};
 
 const builtinDateEvents = [
     { key: 'holiday:01-01', date: '01-01', nameKey: 'invitation.event.newYear' },
@@ -3402,11 +3413,16 @@ async function maybeShowHomepageInvitation(force = false) {
     clearHomepageRetryTimer();
     state.homepageInvitePending = false;
     state.homepageInviteLoading = true;
+    const birthdayDispatch = resolveBirthdayDispatch(pool);
     const angerCandidates = pool.filter((c) => shouldShowAngerMode(c));
     let characterInfo;
     let mode;
     let templateContext = {};
-    if (angerCandidates.length > 0) {
+    if (birthdayDispatch) {
+        characterInfo = birthdayDispatch.characterInfo;
+        mode = birthdayDispatch.mode;
+        templateContext = birthdayDispatch.templateContext;
+    } else if (angerCandidates.length > 0) {
         characterInfo = pickRandom(angerCandidates);
         mode = 'anger';
     } else {
@@ -3605,8 +3621,91 @@ function getJealousyMessages(characterInfo, templateContext = {}) {
         .filter(Boolean);
 }
 
+function normalizeDateEventLabel(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function buildNormalizedLabelSet(values) {
+    return new Set((Array.isArray(values) ? values : [values])
+        .map(normalizeDateEventLabel)
+        .filter(Boolean));
+}
+
+function parseBirthdayTaggedLine(line) {
+    const raw = String(line || '').trim();
+    if (!raw) {
+        return { tagged: false, tag: '', text: '' };
+    }
+    for (const separator of birthdayLineTagSeparators) {
+        const index = raw.indexOf(separator);
+        if (index > 0) {
+            const tag = raw.slice(0, index).trim();
+            const text = raw.slice(index + separator.length).trim();
+            if (tag && text) {
+                return { tagged: true, tag, text };
+            }
+        }
+    }
+    return { tagged: false, tag: '', text: raw };
+}
+
+function getDateEventLabelSet(event) {
+    const labels = [];
+    if (event?.name) {
+        labels.push(event.name);
+    }
+    if (Array.isArray(event?.labels)) {
+        labels.push(...event.labels);
+    }
+    if (event?.nameKey) {
+        labels.push(t(event.nameKey));
+        labels.push(...(builtinDateEventLabelAliases[event.nameKey] || []));
+    }
+    if (String(event?.key || '').startsWith('userBirthday')) {
+        labels.push(t('invitation.event.userBirthday'), ...birthdayUserBirthdayTags);
+    }
+    if (String(event?.key || '').startsWith('characterBirthday')) {
+        labels.push(...birthdayCharacterBirthdayTags);
+    }
+    return buildNormalizedLabelSet(labels);
+}
+
+function getBirthdayMessagesForDateEvent(characterInfo, dateEvent, templateContext = {}) {
+    const eventLabels = getDateEventLabelSet(dateEvent);
+    const genericLabels = buildNormalizedLabelSet(birthdayGenericTags);
+    const matchingLines = [];
+    const fallbackLines = [];
+
+    for (const line of getPoolLines(characterInfo, 'birthday')) {
+        const parsed = parseBirthdayTaggedLine(line);
+        if (!parsed.text) {
+            continue;
+        }
+        if (!parsed.tagged) {
+            fallbackLines.push(parsed.text);
+            continue;
+        }
+
+        const tag = normalizeDateEventLabel(parsed.tag);
+        if (eventLabels.has(tag)) {
+            matchingLines.push(parsed.text);
+        } else if (genericLabels.has(tag)) {
+            fallbackLines.push(parsed.text);
+        }
+    }
+
+    const selected = matchingLines.length ? matchingLines : fallbackLines;
+    return selected
+        .map((line) => applyTemplate(line, characterInfo, templateContext))
+        .filter(Boolean);
+}
+
 function getBirthdayMessages(characterInfo, templateContext = {}) {
+    if (templateContext.dateEvent) {
+        return getBirthdayMessagesForDateEvent(characterInfo, templateContext.dateEvent, templateContext);
+    }
     return getPoolLines(characterInfo, 'birthday')
+        .map((line) => parseBirthdayTaggedLine(line).text)
         .map((line) => applyTemplate(line, characterInfo, templateContext))
         .filter(Boolean);
 }
@@ -3628,8 +3727,7 @@ function getMessagesForMode(characterInfo, mode, templateContext = {}) {
         return getJealousyMessages(characterInfo, templateContext);
     }
     if (mode === 'birthday') {
-        const birthdayMessages = getBirthdayMessages(characterInfo, templateContext);
-        return birthdayMessages.length ? birthdayMessages : getManualMessages(characterInfo, templateContext);
+        return getBirthdayMessages(characterInfo, templateContext);
     }
     if (mode === 'reunion') {
         return getReunionMessages(characterInfo, templateContext);
@@ -3881,22 +3979,36 @@ async function getReunionContext(characterInfo, now = new Date()) {
     };
 }
 
+function resolveBirthdayModeCandidate(characterInfo, now = new Date()) {
+    const base = buildBaseTemplateContext(characterInfo, { now });
+    for (const dateEvent of getTodayDateEvents(characterInfo, now)) {
+        const templateContext = {
+            ...base,
+            todayEvent: dateEvent.name,
+            daysUntilBirthday: '0',
+            dateEvent,
+        };
+        if (getBirthdayMessages(characterInfo, templateContext).length > 0) {
+            return {
+                characterInfo,
+                mode: 'birthday',
+                templateContext,
+            };
+        }
+    }
+    return null;
+}
+
+function resolveBirthdayDispatch(pool, now = new Date()) {
+    const candidates = (Array.isArray(pool) ? pool : [])
+        .map((characterInfo) => resolveBirthdayModeCandidate(characterInfo, now))
+        .filter(Boolean);
+    return candidates.length ? pickRandom(candidates) : null;
+}
+
 async function resolveInvitationModeAfterAnger(characterInfo) {
     const now = new Date();
     const base = buildBaseTemplateContext(characterInfo, { now });
-    const [dateEvent] = getTodayDateEvents(characterInfo, now);
-    if (dateEvent) {
-        return {
-            mode: 'birthday',
-            templateContext: {
-                ...base,
-                todayEvent: dateEvent.name,
-                daysUntilBirthday: '0',
-                dateEvent,
-            },
-        };
-    }
-
     const reunion = await getReunionContext(characterInfo, now);
     if (reunion) {
         return {

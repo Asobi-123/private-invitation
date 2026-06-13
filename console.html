@@ -242,7 +242,7 @@
                 <details class="pi-card pi-card--foldable">
                     <summary class="pi-card-summary">
                         <strong data-i18n="console.copy.birthdayPoolTitle">生日 / 特殊日期文案池</strong>
-                        <span class="pi-muted" data-i18n="console.copy.birthdayPoolNote">命中特殊日期时触发；同一事件当天成功展示后不再重复触发。</span>
+                        <span class="pi-muted" data-i18n="console.copy.birthdayPoolNote">生日 / 特殊日期优先触发；当天成功展示后不再重复触发。</span>
                     </summary>
                     <div class="pi-field">
                         <label for="pi_character_birthday" data-i18n="console.birthday.characterBirthday">本角色生日</label>
@@ -268,7 +268,7 @@
                             <button id="pi_birthday_pool_add" type="button" class="menu_button" data-i18n="console.birthday.poolAdd">添加</button>
                         </div>
                         <input id="pi_birthday_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.birthday.poolSearch" placeholder="在生日池中搜索">
-                        <small class="pi-muted" data-i18n="console.birthday.poolNote">支持 {todayEvent}、{daysUntilBirthday} 和所有时间变量。池为空时回退主邀约文案。</small>
+                        <small class="pi-muted" data-i18n="console.birthday.poolNote">可用行首标签过滤：用户生日==、角色生日==、事件名==、通用==。支持 --、==、：：、::；展示时会自动去掉标签。</small>
                         <div id="pi_birthday_pool_list" class="pi-chip-list"></div>
                     </div>
                 </details>

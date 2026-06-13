@@ -9,20 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Contextual homepage modes after anger scheduling: jealousy, birthday / special date, and SSR reunion.
+- Contextual homepage modes: jealousy, birthday / special date, and SSR reunion.
 - Time and date template variables for saved copy pools, including `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, and `{daysUntilBirthday}`.
 - Last-chat snapshot support for jealousy lines with `{lastChar}`, `{lastChat}`, and `{minutesSinceLastChat}`.
 - Per-character jealousy appearance weights, so characters with jealousy pools can surface at different rates after a post-chat jealousy event hits.
 - Per-character user birthday and special-date settings, alongside character birthdays and global defaults.
 - Birthday / special-date one-day guard: once birthday mode successfully displays on a local date, later callbacks that day skip birthday mode.
+- Birthday / special-date pool line tags: `用户生日==`, `角色生日==`, event-name tags, and `通用==` fallback, with `--`, `==`, `：：`, and `::` separators.
 - SSR reunion checks based on `date_last_chat` or `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
 - Reunion gold visual treatment and manual test buttons for jealousy, birthday, and reunion modes.
 - AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
 
 ### Changed
 
-- Homepage mode selection keeps anger-ready characters as the outer priority, then attempts a post-chat jealousy event before falling back to the normal birthday / reunion / primary draw.
+- Homepage mode selection now gives usable birthday / special-date matches top priority, then checks anger-ready characters, then attempts a post-chat jealousy event before falling back to the normal reunion / primary draw.
 - Global jealousy chance now controls whether the post-chat jealousy event happens; per-character jealousy values are candidate appearance weights. User birthday and custom date events remain defaults when the drawn character has no specific override.
+- Birthday / special-date events no longer fall back to main invitation lines. If no matching tag, generic tag, or untagged birthday line is available, the date guard is left untouched and the normal mode chain continues.
 - Last-chat snapshots are runtime-only again; stale `sessionStorage` snapshots from earlier builds are cleared on startup so refreshed homepages can still show normal invitations.
 - Entering a new character now overwrites older runtime jealousy snapshots, and navigation snapshots are sampled again after short delays to avoid stale last-chat data during consecutive jealousy tests.
 - A lightweight navigation monitor now catches missed SillyTavern navigation events so last-chat snapshots do not depend on a single event firing at the right time.

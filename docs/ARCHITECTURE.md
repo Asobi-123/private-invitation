@@ -80,11 +80,14 @@ The homepage invitation never calls AI. It reads saved per-character copy pools.
 
 ### Homepage mode resolution
 
-`maybeShowHomepageInvitation()` keeps anger as the outer scheduling override:
+`maybeShowHomepageInvitation()` resolves rare date events before the normal scheduling path:
 
 ```text
 resolvePoolCharacters()
-  ├─ if any anger-ready character exists
+  ├─ if any birthday / special-date candidate exists
+  │     (date matches and birthdayMessages has a matching / fallback line)
+  │     → pick from date candidates, mode = birthday
+  ├─ else if any anger-ready character exists
   │     → pick from anger candidates, mode = anger
   └─ else
         ├─ if a recent last-chat departure exists
@@ -95,16 +98,15 @@ resolvePoolCharacters()
         └─ otherwise / miss
               → pick one normal pool character
               → resolveInvitationModeAfterAnger(character)
-                   ├─ birthday / special date, if not consumed today
                    ├─ reunion, if last chat age reaches the threshold
                    └─ primary
 ```
 
-Only one mode is used per invitation. There are no combined pools such as anger-birthday or reunion-jealousy. Birthday mode writes a date-level consumption marker after a successful display, so the same local day does not repeatedly enter birthday mode.
+Only one mode is used per invitation. There are no combined pools such as anger-birthday or reunion-jealousy. Birthday mode writes a date-level consumption marker after a successful display, so the same local day does not repeatedly enter birthday mode. If the date matches but the birthday pool has no usable line, the date guard is not consumed and the resolver continues to anger / jealousy / reunion / primary.
 
 The last-chat snapshot is updated from SillyTavern navigation events plus a low-frequency context monitor. While on a character chat page, the active character is stored as `state.activeChatCharacter`. When returning to the homepage, the active snapshot is copied to `state.lastChatCharacter` with `leftAt`. The navigation handler samples immediately and again after short delays so early SillyTavern events do not leave stale snapshots behind; the monitor catches cases where those events are missed entirely. The jealousy resolver also finalizes an active character if it sees the app is already on the homepage, which catches missed leave events. Last-chat context is runtime-only and is not revived from older page refreshes, so a fresh homepage load can still show normal invitations. `jealousyChance` controls whether a jealousy event happens for a homepage callback inside the runtime window; `characterJealousyChances` controls candidate appearance weight when the event hits. Missing per-character weights fall back to `jealousyChance`.
 
-Birthday / special-date resolution checks the drawn character first: `characterUserBirthdays`, `characterBirthdays`, and `characterDateEvents`. Global `userBirthday` and `customDateEvents` remain defaults, not the only source of date events.
+Birthday / special-date resolution scans eligible pool characters before anger. Each candidate checks `characterUserBirthdays`, `characterBirthdays`, and `characterDateEvents`; global `userBirthday` and `customDateEvents` remain defaults, not the only source of date events. Birthday pool lines may start with tags such as `用户生日==`, `角色生日==`, `{todayEvent}==`, or `通用==`; the resolver prefers exact event-tag matches, then generic / untagged fallback lines, and strips the tag before display.
 
 Reunion checks only the character that was already randomly drawn. It uses `character.date_last_chat` first, then falls back to `/api/characters/chats` and the maximum `last_mes` timestamp. This does not increase old characters' draw probability.
 

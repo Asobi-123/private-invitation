@@ -187,21 +187,22 @@ Expected:
 Steps:
 
 1. Keep at least two characters in the invitation pool.
-2. Save jealousy, birthday, and reunion lines for one target character. Keep other characters' jealousy pools empty for the deterministic test.
+2. Save jealousy, birthday, and reunion lines for one target character. For birthday, include at least one tagged line such as `用户生日==...`, `角色生日==...`, the configured event name with `==`, or a `通用==...` / untagged fallback line. Keep other characters' jealousy pools empty for the deterministic test.
 3. Enable jealousy mode, set global event chance to 100%, set the target character's jealousy appearance weight to 100%, and set the window to at least 10 minutes.
 4. Open a different character chat, then return to the homepage and trigger an invitation.
 5. Enter the jealousy invitation character, switch to another character chat, return to the homepage, and verify the next jealousy trigger uses the new last-chat character instead of the previous one.
-6. Set the test character's user birthday, character birthday, or special date to today's `MM-DD`, then trigger the test character.
-7. Trigger birthday mode again on the same local date.
-8. Enable reunion mode, set `reunionThresholdDays` low enough to match an old chat, or use the manual reunion test button.
-9. Test the manual buttons for jealousy, birthday, and reunion from the Copy tab.
+6. Set the test character's user birthday, character birthday, or special date to today's `MM-DD`, then trigger a homepage invitation.
+7. Remove or rename the matching birthday tag, trigger again, and confirm the date guard is not consumed when no usable birthday line exists.
+8. Restore the matching birthday line, trigger birthday mode, then trigger again on the same local date.
+9. Enable reunion mode, set `reunionThresholdDays` low enough to match an old chat, or use the manual reunion test button.
+10. Test the manual buttons for jealousy, birthday, and reunion from the Copy tab.
 
 Expected:
 
 - Jealousy mode only triggers when the last-chat character exists, the window is valid, the global event roll hits, and at least one different pool character has jealousy lines with positive appearance weight.
 - Entering a new character overwrites the older runtime snapshot; returning home writes the new character as the last-chat snapshot.
-- For normal random draws, birthday mode wins over reunion after anger; successful jealousy dispatch happens before the normal draw.
-- After birthday mode is consumed for the date, normal draws for the same character can still enter reunion or primary mode.
+- Birthday / special-date mode has top priority when a pool character has a matching event and usable birthday line. Successful jealousy dispatch still happens before the normal reunion / primary draw when no birthday candidate exists.
+- After birthday mode is consumed for the date, later callbacks can still enter anger, jealousy, reunion, or primary mode.
 - Reunion mode only checks the already drawn character and does not change draw probability.
 - Reunion visual treatment shows a gold SSR-style effect without hiding actions or changing card size.
 - Contextual test buttons close back to the console and do not actually switch chats.

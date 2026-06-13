@@ -152,7 +152,7 @@ Representative shape:
 Contextual mode pools mirror the same per-character shape:
 
 - `jealousyMessages`: lines used when a character is selected by the post-chat jealousy event and reacts to the last chat character.
-- `birthdayMessages`: lines used on user birthday, character birthday, built-in holidays, or custom dates. If empty, birthday mode falls back to `characterMessages`.
+- `birthdayMessages`: lines used on user birthday, character birthday, built-in holidays, or custom dates. Birthday mode only triggers when this pool has a matching tagged line, a `通用` / `General` fallback line, or an untagged fallback line.
 - `reunionMessages`: lines used when a randomly drawn character has not been chatted with for at least `reunionThresholdDays`.
 - `jealousyDrafts`, `birthdayDrafts`, `reunionDrafts`: AI draft pools for the matching contextual modes.
 
@@ -173,12 +173,12 @@ Date consumption:
 }
 ```
 
-`dateEventConsumed.birthdayMode` is the date-level guard. Once birthday mode has successfully shown on a date, all birthday / special-date checks are skipped for the rest of that local day.
+`dateEventConsumed.birthdayMode` is the date-level guard. Once birthday mode has successfully shown on a date, all birthday / special-date checks are skipped for the rest of that local day. A date event with no usable `birthdayMessages` line does not consume this guard.
 
 Contextual mode trigger settings:
 
 - `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the global event probability for a homepage callback inside the recent-chat window. If the event hits, eligible characters are picked by `characterJealousyChances` weight. Missing weights fall back to `jealousyChance`.
-- `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for the drawn character.
+- `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for each eligible pool character.
 - `reunionEnabled`, `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
 
 `customDateEvents` and each `characterDateEvents[characterKey]` value are plain text, one event per line:
@@ -187,6 +187,17 @@ Contextual mode trigger settings:
 06-12 Anniversary
 12-31 Countdown
 ```
+
+Birthday pool lines can optionally start with a date tag. Supported separators are `--`, `==`, `：：`, and `::`.
+
+```text
+用户生日==I remembered before the clock did.
+角色生日==Today belongs to {char}, whether you admit it or not.
+Anniversary==You still remember what we promised on {todayEvent}, don't you?
+通用==The calendar found us again.
+```
+
+When a matching tag exists, only matching tagged lines are used. If no tag matches, `通用` / `General` and untagged lines are used as fallback. The tag and separator are stripped before display.
 
 ## Draft Pools
 
