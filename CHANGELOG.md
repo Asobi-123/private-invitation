@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Reunion gold visual treatment and manual test buttons for jealousy, birthday, and reunion modes.
 - AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
 - Light console panel themes inspired by the conso-illustrator panel palette: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
-- Birthday / special-date pool variable help and a control to reset today's birthday guard during testing.
+- Birthday / special-date pool variable help and a control to reset today's date guard during testing.
 
 ### Changed
 

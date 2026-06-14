@@ -3528,7 +3528,6 @@ function buildBaseTemplateContext(characterInfo, extra = {}) {
     const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(now);
     const characterBirthday = getCharacterBirthday(characterInfo);
     const userBirthday = getCharacterUserBirthday(characterInfo);
-    const birthday = characterBirthday || userBirthday;
     const base = {
         char: characterInfo?.name || '',
         charLabel: characterInfo ? getCharacterJealousyLabel(characterInfo) : '',
@@ -3538,7 +3537,6 @@ function buildBaseTemplateContext(characterInfo, extra = {}) {
         date: formatLocalDateKey(now),
         period: getPeriodLabel(now),
         todayEvent: '',
-        daysUntilBirthday: getDaysUntilMonthDay(birthday, now),
         daysUntilCharacterBirthday: getDaysUntilMonthDay(characterBirthday, now),
         daysUntilUserBirthday: getDaysUntilMonthDay(userBirthday, now),
         lastChar: '',
@@ -4006,7 +4004,6 @@ function resolveBirthdayModeCandidate(characterInfo, now = new Date()) {
         const templateContext = {
             ...base,
             todayEvent: dateEvent.name,
-            daysUntilBirthday: '0',
             dateEvent,
         };
         if (getBirthdayMessages(characterInfo, templateContext).length > 0) {
@@ -6623,7 +6620,6 @@ function buildTestTemplateContext(mode, characterInfo) {
         return {
             ...base,
             todayEvent: dateEvent.name,
-            daysUntilBirthday: '0',
             dateEvent,
         };
     }
