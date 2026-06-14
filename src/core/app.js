@@ -485,7 +485,6 @@ const defaultSettings = {
     angerAiPrompt: '',
     angerBatchCount: 8,
     angerGeneratedText: '',
-    jealousyEnabled: false,
     jealousyChance: 45,
     jealousyWindowMinutes: 10,
     jealousyPromptPreset: 'teasingJealousy',
@@ -494,7 +493,6 @@ const defaultSettings = {
     jealousyAiPrompt: '',
     jealousyBatchCount: 8,
     jealousyGeneratedText: '',
-    birthdayEnabled: true,
     userBirthday: '',
     customDateEvents: '',
     builtinDateEventsEnabled: false,
@@ -504,7 +502,6 @@ const defaultSettings = {
     birthdayAiPrompt: '',
     birthdayBatchCount: 8,
     birthdayGeneratedText: '',
-    reunionEnabled: false,
     reunionThresholdDays: 30,
     reunionExtremeThresholdDays: 180,
     reunionNoChatPolicy: 'skip',
@@ -1022,6 +1019,9 @@ function ensureSettings() {
             settings[key] = Array.isArray(value) ? [...value] : value;
         }
     }
+    delete settings.jealousyEnabled;
+    delete settings.birthdayEnabled;
+    delete settings.reunionEnabled;
 
     settings.retentionChance = clampNumber(settings.retentionChance, 0, 100, defaultSettings.retentionChance);
     settings.continueOnDismiss = Boolean(settings.continueOnDismiss);
@@ -1109,7 +1109,6 @@ function ensureSettings() {
     settings.angerAiPrompt = String(settings.angerAiPrompt || '');
     settings.angerBatchCount = clampNumber(settings.angerBatchCount, 3, 30, defaultSettings.angerBatchCount);
     settings.angerGeneratedText = String(settings.angerGeneratedText || '');
-    settings.jealousyEnabled = Boolean(settings.jealousyEnabled);
     settings.jealousyChance = clampNumber(settings.jealousyChance, 0, 100, defaultSettings.jealousyChance);
     settings.jealousyWindowMinutes = clampNumber(settings.jealousyWindowMinutes, 1, 1440, defaultSettings.jealousyWindowMinutes);
     settings.jealousyPromptPreset = jealousyPromptPresetKeys.includes(settings.jealousyPromptPreset) || isCustomTemplateKey(settings.jealousyPromptPreset)
@@ -1120,7 +1119,6 @@ function ensureSettings() {
     settings.jealousyAiPrompt = String(settings.jealousyAiPrompt || '');
     settings.jealousyBatchCount = clampNumber(settings.jealousyBatchCount, 3, 30, defaultSettings.jealousyBatchCount);
     settings.jealousyGeneratedText = String(settings.jealousyGeneratedText || '');
-    settings.birthdayEnabled = settings.birthdayEnabled !== false;
     settings.userBirthday = String(settings.userBirthday || '');
     settings.customDateEvents = String(settings.customDateEvents || '');
     settings.builtinDateEventsEnabled = Boolean(settings.builtinDateEventsEnabled);
@@ -1132,7 +1130,6 @@ function ensureSettings() {
     settings.birthdayAiPrompt = String(settings.birthdayAiPrompt || '');
     settings.birthdayBatchCount = clampNumber(settings.birthdayBatchCount, 3, 30, defaultSettings.birthdayBatchCount);
     settings.birthdayGeneratedText = String(settings.birthdayGeneratedText || '');
-    settings.reunionEnabled = Boolean(settings.reunionEnabled);
     settings.reunionThresholdDays = clampNumber(settings.reunionThresholdDays, 1, 3650, defaultSettings.reunionThresholdDays);
     settings.reunionExtremeThresholdDays = clampNumber(settings.reunionExtremeThresholdDays, settings.reunionThresholdDays, 3650, defaultSettings.reunionExtremeThresholdDays);
     settings.reunionNoChatPolicy = reunionNoChatPolicyKeys.includes(settings.reunionNoChatPolicy) ? settings.reunionNoChatPolicy : defaultSettings.reunionNoChatPolicy;
@@ -3418,18 +3415,18 @@ async function maybeShowHomepageInvitation(force = false) {
     clearHomepageRetryTimer();
     state.homepageInvitePending = false;
     state.homepageInviteLoading = true;
-    const birthdayDispatch = resolveBirthdayDispatch(pool);
     const angerCandidates = pool.filter((c) => shouldShowAngerMode(c));
+    const birthdayDispatch = angerCandidates.length > 0 ? null : resolveBirthdayDispatch(pool);
     let characterInfo;
     let mode;
     let templateContext = {};
-    if (birthdayDispatch) {
+    if (angerCandidates.length > 0) {
+        characterInfo = pickRandom(angerCandidates);
+        mode = 'anger';
+    } else if (birthdayDispatch) {
         characterInfo = birthdayDispatch.characterInfo;
         mode = birthdayDispatch.mode;
         templateContext = birthdayDispatch.templateContext;
-    } else if (angerCandidates.length > 0) {
-        characterInfo = pickRandom(angerCandidates);
-        mode = 'anger';
     } else {
         const jealousyDispatch = resolveJealousyDispatch(pool);
         if (jealousyDispatch) {
@@ -3530,7 +3527,8 @@ function buildBaseTemplateContext(characterInfo, extra = {}) {
     const hour = now.getHours();
     const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(now);
     const characterBirthday = getCharacterBirthday(characterInfo);
-    const birthday = characterBirthday || getCharacterUserBirthday(characterInfo);
+    const userBirthday = getCharacterUserBirthday(characterInfo);
+    const birthday = characterBirthday || userBirthday;
     const base = {
         char: characterInfo?.name || '',
         charLabel: characterInfo ? getCharacterJealousyLabel(characterInfo) : '',
@@ -3541,6 +3539,8 @@ function buildBaseTemplateContext(characterInfo, extra = {}) {
         period: getPeriodLabel(now),
         todayEvent: '',
         daysUntilBirthday: getDaysUntilMonthDay(birthday, now),
+        daysUntilCharacterBirthday: getDaysUntilMonthDay(characterBirthday, now),
+        daysUntilUserBirthday: getDaysUntilMonthDay(userBirthday, now),
         lastChar: '',
         lastChat: '',
         minutesSinceLastChat: '',
@@ -3804,9 +3804,6 @@ function consumeDateEvent(event) {
 
 function getTodayDateEvents(characterInfo, now = new Date(), options = {}) {
     const settings = ensureSettings();
-    if (!settings.birthdayEnabled) {
-        return [];
-    }
 
     const today = formatMonthDay(now);
     const dateKey = formatLocalDateKey(now);
@@ -3881,9 +3878,6 @@ function clearDateEventConsumptionForDate(dateKey = formatLocalDateKey()) {
 
 function getJealousyDepartureContext(now = new Date()) {
     const settings = ensureSettings();
-    if (!settings.jealousyEnabled) {
-        return null;
-    }
     const homepage = isHomepage();
     if (homepage) {
         finalizeActiveChatDeparture(now.getTime());
@@ -3976,7 +3970,10 @@ async function getCharacterLastChatInfo(characterInfo) {
 
 async function getReunionContext(characterInfo, now = new Date()) {
     const settings = ensureSettings();
-    if (!settings.reunionEnabled || !characterInfo?.key) {
+    if (!characterInfo?.key) {
+        return null;
+    }
+    if (getPoolLines(characterInfo, 'reunion').length <= 0) {
         return null;
     }
 
@@ -5007,14 +5004,11 @@ function syncSettingsFromDom(root = document) {
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
     const retentionChanceValue = root.querySelector('#pi_retention_chance_value');
-    const jealousyEnabled = root.querySelector('#pi_jealousy_enabled');
     const jealousyChance = root.querySelector('#pi_jealousy_chance');
     const jealousyWindowMinutes = root.querySelector('#pi_jealousy_window_minutes');
-    const birthdayEnabled = root.querySelector('#pi_birthday_enabled');
     const userBirthday = root.querySelector('#pi_user_birthday');
     const customDateEvents = root.querySelector('#pi_custom_date_events');
     const builtinDateEventsEnabled = root.querySelector('#pi_builtin_date_events_enabled');
-    const reunionEnabled = root.querySelector('#pi_reunion_enabled');
     const reunionThresholdDays = root.querySelector('#pi_reunion_threshold_days');
     const reunionExtremeThresholdDays = root.querySelector('#pi_reunion_extreme_threshold_days');
     const reunionNoChatPolicy = root.querySelector('#pi_reunion_no_chat_policy');
@@ -5241,9 +5235,6 @@ function syncSettingsFromDom(root = document) {
         settings.continuePickLimit = clampNumber(continuePickLimit.value, 1, 10, defaultSettings.continuePickLimit);
         continuePickLimit.value = String(settings.continuePickLimit);
     }
-    if (jealousyEnabled) {
-        settings.jealousyEnabled = jealousyEnabled.checked;
-    }
     if (jealousyChance) {
         settings.jealousyChance = clampNumber(jealousyChance.value, 0, 100, defaultSettings.jealousyChance);
         jealousyChance.value = String(settings.jealousyChance);
@@ -5251,9 +5242,6 @@ function syncSettingsFromDom(root = document) {
     if (jealousyWindowMinutes) {
         settings.jealousyWindowMinutes = clampNumber(jealousyWindowMinutes.value, 1, 1440, defaultSettings.jealousyWindowMinutes);
         jealousyWindowMinutes.value = String(settings.jealousyWindowMinutes);
-    }
-    if (birthdayEnabled) {
-        settings.birthdayEnabled = birthdayEnabled.checked;
     }
     if (userBirthday) {
         const normalized = normalizeMonthDay(userBirthday.value);
@@ -5265,9 +5253,6 @@ function syncSettingsFromDom(root = document) {
     }
     if (builtinDateEventsEnabled) {
         settings.builtinDateEventsEnabled = builtinDateEventsEnabled.checked;
-    }
-    if (reunionEnabled) {
-        settings.reunionEnabled = reunionEnabled.checked;
     }
     if (reunionThresholdDays) {
         settings.reunionThresholdDays = clampNumber(reunionThresholdDays.value, 1, 3650, defaultSettings.reunionThresholdDays);
@@ -5335,14 +5320,11 @@ function persistDialogueEditor(root = document, options = {}) {
     const frameOpacity = root.querySelector('#pi_frame_opacity_value') || root.querySelector('#pi_frame_opacity');
     const barrageDuration = root.querySelector('#pi_barrage_duration_value') || root.querySelector('#pi_barrage_duration');
     const barrageLineCount = root.querySelector('#pi_barrage_line_count_value') || root.querySelector('#pi_barrage_line_count');
-    const jealousyEnabled = root.querySelector('#pi_jealousy_enabled');
     const jealousyChance = root.querySelector('#pi_jealousy_chance');
     const jealousyWindowMinutes = root.querySelector('#pi_jealousy_window_minutes');
-    const birthdayEnabled = root.querySelector('#pi_birthday_enabled');
     const userBirthday = root.querySelector('#pi_user_birthday');
     const customDateEvents = root.querySelector('#pi_custom_date_events');
     const builtinDateEventsEnabled = root.querySelector('#pi_builtin_date_events_enabled');
-    const reunionEnabled = root.querySelector('#pi_reunion_enabled');
     const reunionThresholdDays = root.querySelector('#pi_reunion_threshold_days');
     const reunionExtremeThresholdDays = root.querySelector('#pi_reunion_extreme_threshold_days');
     const reunionNoChatPolicy = root.querySelector('#pi_reunion_no_chat_policy');
@@ -5487,17 +5469,11 @@ function persistDialogueEditor(root = document, options = {}) {
     if (barrageLineCount) {
         settings.barrageLineCount = clampNumber(barrageLineCount.value, 2, 8, defaultSettings.barrageLineCount);
     }
-    if (jealousyEnabled) {
-        settings.jealousyEnabled = jealousyEnabled.checked;
-    }
     if (jealousyChance) {
         settings.jealousyChance = clampNumber(jealousyChance.value, 0, 100, defaultSettings.jealousyChance);
     }
     if (jealousyWindowMinutes) {
         settings.jealousyWindowMinutes = clampNumber(jealousyWindowMinutes.value, 1, 1440, defaultSettings.jealousyWindowMinutes);
-    }
-    if (birthdayEnabled) {
-        settings.birthdayEnabled = birthdayEnabled.checked;
     }
     if (userBirthday) {
         const normalized = normalizeMonthDay(userBirthday.value);
@@ -5508,9 +5484,6 @@ function persistDialogueEditor(root = document, options = {}) {
     }
     if (builtinDateEventsEnabled) {
         settings.builtinDateEventsEnabled = builtinDateEventsEnabled.checked;
-    }
-    if (reunionEnabled) {
-        settings.reunionEnabled = reunionEnabled.checked;
     }
     if (reunionThresholdDays) {
         settings.reunionThresholdDays = clampNumber(reunionThresholdDays.value, 1, 3650, defaultSettings.reunionThresholdDays);
@@ -5611,14 +5584,11 @@ function syncDomFromSettings(root = document) {
     const continueOnDismiss = root.querySelector('#pi_continue_on_dismiss');
     const continuePickLimit = root.querySelector('#pi_continue_pick_limit');
     const retentionChanceValue = root.querySelector('#pi_retention_chance_value');
-    const jealousyEnabled = root.querySelector('#pi_jealousy_enabled');
     const jealousyChance = root.querySelector('#pi_jealousy_chance');
     const jealousyWindowMinutes = root.querySelector('#pi_jealousy_window_minutes');
-    const birthdayEnabled = root.querySelector('#pi_birthday_enabled');
     const userBirthday = root.querySelector('#pi_user_birthday');
     const customDateEvents = root.querySelector('#pi_custom_date_events');
     const builtinDateEventsEnabled = root.querySelector('#pi_builtin_date_events_enabled');
-    const reunionEnabled = root.querySelector('#pi_reunion_enabled');
     const reunionThresholdDays = root.querySelector('#pi_reunion_threshold_days');
     const reunionExtremeThresholdDays = root.querySelector('#pi_reunion_extreme_threshold_days');
     const reunionNoChatPolicy = root.querySelector('#pi_reunion_no_chat_policy');
@@ -5801,17 +5771,11 @@ function syncDomFromSettings(root = document) {
     if (retentionChanceValue) {
         retentionChanceValue.value = String(settings.retentionChance);
     }
-    if (jealousyEnabled) {
-        jealousyEnabled.checked = Boolean(settings.jealousyEnabled);
-    }
     if (jealousyChance) {
         jealousyChance.value = String(settings.jealousyChance);
     }
     if (jealousyWindowMinutes) {
         jealousyWindowMinutes.value = String(settings.jealousyWindowMinutes);
-    }
-    if (birthdayEnabled) {
-        birthdayEnabled.checked = Boolean(settings.birthdayEnabled);
     }
     if (userBirthday) {
         userBirthday.value = String(settings.userBirthday || '');
@@ -5821,9 +5785,6 @@ function syncDomFromSettings(root = document) {
     }
     if (builtinDateEventsEnabled) {
         builtinDateEventsEnabled.checked = Boolean(settings.builtinDateEventsEnabled);
-    }
-    if (reunionEnabled) {
-        reunionEnabled.checked = Boolean(settings.reunionEnabled);
     }
     if (reunionThresholdDays) {
         reunionThresholdDays.value = String(settings.reunionThresholdDays);
@@ -7594,14 +7555,11 @@ function bindConsoleEvents(root) {
         '#pi_bubble_offset_y_value',
         '#pi_continue_on_dismiss',
         '#pi_continue_pick_limit',
-        '#pi_jealousy_enabled',
         '#pi_jealousy_chance',
         '#pi_jealousy_window_minutes',
-        '#pi_birthday_enabled',
         '#pi_user_birthday',
         '#pi_custom_date_events',
         '#pi_builtin_date_events_enabled',
-        '#pi_reunion_enabled',
         '#pi_reunion_threshold_days',
         '#pi_reunion_extreme_threshold_days',
         '#pi_reunion_no_chat_policy',

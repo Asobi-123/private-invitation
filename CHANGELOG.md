@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Contextual homepage modes: jealousy, birthday / special date, and SSR reunion.
-- Time and date template variables for saved copy pools, including `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, and `{daysUntilBirthday}`.
+- Time and date template variables for saved copy pools, including `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, `{daysUntilCharacterBirthday}`, and `{daysUntilUserBirthday}`.
 - Last-chat snapshot support for jealousy lines with `{lastChar}`, `{lastChat}`, and `{minutesSinceLastChat}`.
 - Per-character jealousy appearance weights, so characters with jealousy pools can surface at different rates after a post-chat jealousy event hits.
 - Per-character user birthday and special-date settings, alongside character birthdays and global defaults.
@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Homepage mode selection now gives usable birthday / special-date matches top priority, then checks anger-ready characters, then attempts a post-chat jealousy event before falling back to the normal reunion / primary draw.
+- Homepage mode selection checks anger-ready characters first, then usable birthday / special-date matches, then post-chat jealousy, then reunion / primary.
+- Jealousy, birthday / special-date, and reunion no longer have separate global enable switches; they activate from their actual data and thresholds.
 - Global jealousy chance now controls whether the post-chat jealousy event happens; per-character jealousy values are candidate appearance weights. User birthday and custom date events remain defaults when the drawn character has no specific override.
 - Birthday / special-date events no longer fall back to main invitation lines. If no matching tag, generic tag, or untagged birthday line is available, the date guard is left untouched and the normal mode chain continues.
 - Last-chat snapshots are runtime-only again; stale `sessionStorage` snapshots from earlier builds are cleared on startup so refreshed homepages can still show normal invitations.

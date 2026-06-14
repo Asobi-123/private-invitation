@@ -69,7 +69,6 @@ Representative shape:
   "angerResetOnAccept": true,
   "angerAccentColor": "#c2415a",
   "angerIntensity": "restrained",
-  "jealousyEnabled": false,
   "jealousyChance": 45,
   "jealousyWindowMinutes": 10,
   "jealousyPromptPreset": "teasingJealousy",
@@ -77,7 +76,6 @@ Representative shape:
   "jealousyBatchCount": 8,
   "jealousyCustomTemplates": {},
   "jealousyAiPrompt": "",
-  "birthdayEnabled": true,
   "userBirthday": "",
   "customDateEvents": "",
   "builtinDateEventsEnabled": false,
@@ -86,7 +84,6 @@ Representative shape:
   "birthdayBatchCount": 8,
   "birthdayCustomTemplates": {},
   "birthdayAiPrompt": "",
-  "reunionEnabled": false,
   "reunionThresholdDays": 30,
   "reunionExtremeThresholdDays": 180,
   "reunionNoChatPolicy": "skip",
@@ -177,9 +174,9 @@ Date consumption:
 
 Contextual mode trigger settings:
 
-- `jealousyEnabled`, `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the global event probability for a homepage callback inside the recent-chat window. If the event hits, eligible characters are picked by `characterJealousyChances` weight. Missing weights fall back to `jealousyChance`.
-- `birthdayEnabled`, `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for each eligible pool character.
-- `reunionEnabled`, `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
+- `jealousyChance`, `jealousyWindowMinutes`; `jealousyChance` is the global event probability for a homepage callback inside the recent-chat window. If the event hits, eligible characters are picked by `characterJealousyChances` weight. Missing weights fall back to `jealousyChance`.
+- `userBirthday`, `customDateEvents`, `builtinDateEventsEnabled`; `userBirthday` and `customDateEvents` are global defaults, while `characterUserBirthdays` and `characterDateEvents` are checked first for each eligible pool character.
+- `reunionThresholdDays`, `reunionExtremeThresholdDays`, `reunionNoChatPolicy`, `reunionVisualIntensity`
 
 `customDateEvents` and each `characterDateEvents[characterKey]` value are plain text, one event per line:
 

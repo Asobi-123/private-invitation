@@ -35,9 +35,9 @@ A SillyTavern extension that turns the homepage into a character-recall surface.
 
 ### Contextual callbacks
 - **Jealousy / triangle**: after returning home from character A, a global event roll runs first; on hit, character B is picked from jealousy-pool characters by per-character weight
-- **Time / special dates**: saved lines support variables like `{time}`, `{period}`, and `{todayEvent}`; birthday / special dates can be configured per character and filtered with line-start tags such as `用户生日==`, `角色生日==`, `Event name==`, or `General==`
+- **Time / special dates**: saved lines support variables like `{time}`, `{period}`, `{todayEvent}`, `{daysUntilCharacterBirthday}`, and `{daysUntilUserBirthday}`; birthday / special dates can be configured per character and filtered with line-start tags such as `用户生日==`, `角色生日==`, `Event name==`, or `General==`
 - **SSR reunion**: after a character is drawn, long chat absence can trigger a gold visual treatment and reunion lines
-- One popup uses exactly one form, so no combined copy pools are required; birthday / special dates take priority when matching saved lines exist and are consumed for the local date after a successful display
+- One popup uses exactly one form, so no combined copy pools are required; anger takes priority when a character reaches the threshold, then birthday / special dates can fire and are consumed for the local date after a successful display
 
 ### Visual customization
 - 8 built-in CSS templates (mono / neon border / vintage / palace / gothic shadow / soft glow / comic panel / cyber dream)

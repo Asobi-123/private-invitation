@@ -242,7 +242,7 @@
                 <details class="pi-card pi-card--foldable">
                     <summary class="pi-card-summary">
                         <strong data-i18n="console.copy.birthdayPoolTitle">生日 / 特殊日期文案池</strong>
-                        <span class="pi-muted" data-i18n="console.copy.birthdayPoolNote">生日 / 特殊日期优先触发；当天成功展示后不再重复触发。</span>
+                        <span class="pi-muted" data-i18n="console.copy.birthdayPoolNote">未触发生气时优先于其他情境；当天成功展示后不再重复触发。</span>
                     </summary>
                     <div class="pi-field">
                         <label for="pi_character_birthday" data-i18n="console.birthday.characterBirthday">本角色生日</label>
@@ -281,7 +281,8 @@
                                 <li data-i18n="console.birthday.variableHelp.date">{date}：当前日期，格式为 YYYY-MM-DD。</li>
                                 <li data-i18n="console.birthday.variableHelp.period">{period}：当前时段，例如凌晨、早上、下午、深夜。</li>
                                 <li data-i18n="console.birthday.variableHelp.todayEvent">{todayEvent}：今天命中的日期名称，例如用户生日、角色生日、测试日。</li>
-                                <li data-i18n="console.birthday.variableHelp.daysUntilBirthday">{daysUntilBirthday}：距离本角色生日或这个设定里的用户生日还有几天；生日模式命中当天为 0。</li>
+                                <li data-i18n="console.birthday.variableHelp.daysUntilCharacterBirthday">{daysUntilCharacterBirthday}：距离本角色生日还有几天；没填本角色生日时为空。</li>
+                                <li data-i18n="console.birthday.variableHelp.daysUntilUserBirthday">{daysUntilUserBirthday}：距离这个设定里的用户生日还有几天；没填用户生日时为空。</li>
                                 <li data-i18n="console.birthday.variableHelp.tags">行首标签会决定适用日期，例如 测试日==文案 只在“测试日”命中；通用== 或无标签作为兜底。</li>
                                 <li data-i18n="console.birthday.variableHelp.braces">变量可以写成 {time}，也可以写成 {{time}}。</li>
                             </ul>
@@ -1078,12 +1079,6 @@
                         <strong data-i18n="console.control.jealousyTitle">吃醋 / 修罗场</strong>
                         <span class="pi-muted" data-i18n="console.control.jealousyNote">从其他角色聊天回主页后的时间窗口内判定；未命中则继续普通邀约。</span>
                     </div>
-                    <div class="pi-field">
-                        <label class="pi-switch">
-                            <input id="pi_jealousy_enabled" type="checkbox">
-                            <span data-i18n="console.control.jealousyEnabled">启用吃醋模式</span>
-                        </label>
-                    </div>
                     <div class="pi-home-rule-grid">
                         <div class="pi-field">
                             <label for="pi_jealousy_chance" data-i18n="console.control.jealousyChance">吃醋事件触发概率 %</label>
@@ -1102,12 +1097,6 @@
                         <span class="pi-muted" data-i18n="console.control.birthdayNote">所有文案池都可以使用时间变量。</span>
                     </div>
                     <div class="pi-field">
-                        <label class="pi-switch">
-                            <input id="pi_birthday_enabled" type="checkbox">
-                            <span data-i18n="console.control.birthdayEnabled">启用生日 / 特殊日期模式</span>
-                        </label>
-                    </div>
-                    <div class="pi-field">
                         <label for="pi_user_birthday" data-i18n="console.control.userBirthday">用户生日</label>
                         <input id="pi_user_birthday" type="text" class="text_pole" data-i18n-placeholder="console.control.monthDayPlaceholder" placeholder="MM-DD，例如 06-12">
                     </div>
@@ -1120,7 +1109,7 @@
                     <div class="pi-field">
                         <label for="pi_custom_date_events" data-i18n="console.control.customDateEvents">自定义特殊日期</label>
                         <textarea id="pi_custom_date_events" class="text_pole pi-textarea pi-textarea--small" rows="4" data-i18n-placeholder="console.control.customDateEventsPlaceholder" placeholder="每行一个：MM-DD 名称"></textarea>
-                        <small class="pi-muted" data-i18n="console.control.timeVariableNote">变量：{time}、{hour}、{weekday}、{date}、{period}、{todayEvent}、{daysUntilBirthday}。</small>
+                        <small class="pi-muted" data-i18n="console.control.timeVariableNote">变量：{time}、{hour}、{weekday}、{date}、{period}、{todayEvent}。</small>
                     </div>
                 </div>
 
@@ -1128,12 +1117,6 @@
                     <div class="pi-card-head">
                         <strong data-i18n="console.control.reunionTitle">久别重逢 SSR</strong>
                         <span class="pi-muted" data-i18n="console.control.reunionNote">只在角色已经被随机抽中后检查未聊天时长。</span>
-                    </div>
-                    <div class="pi-field">
-                        <label class="pi-switch">
-                            <input id="pi_reunion_enabled" type="checkbox">
-                            <span data-i18n="console.control.reunionEnabled">启用久别重逢模式</span>
-                        </label>
                     </div>
                     <div class="pi-home-rule-grid">
                         <div class="pi-field">
