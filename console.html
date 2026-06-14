@@ -260,6 +260,7 @@
                     </div>
                     <div class="pi-actions-row pi-actions-row--compact">
                         <button id="pi_birthday_test" type="button" class="menu_button" data-i18n="console.birthday.testButton">测试生日邀约</button>
+                        <button id="pi_birthday_guard_reset" type="button" class="menu_button" data-i18n="console.birthday.guardResetButton">重置今日生日保底</button>
                     </div>
                     <div id="pi_birthday_count" class="pi-muted"></div>
                     <div class="pi-field">
@@ -269,6 +270,22 @@
                         </div>
                         <input id="pi_birthday_pool_search" type="search" class="text_pole pi-pool-search" data-i18n-placeholder="console.birthday.poolSearch" placeholder="在生日池中搜索">
                         <small class="pi-muted" data-i18n="console.birthday.poolNote">可用行首标签过滤：用户生日==、角色生日==、事件名==、通用==。支持 --、==、：：、::；展示时会自动去掉标签。</small>
+                        <details class="pi-variable-help">
+                            <summary data-i18n="console.birthday.variableHelpTitle">生日 / 特殊日期变量说明</summary>
+                            <ul>
+                                <li data-i18n="console.birthday.variableHelp.char">{char}：当前角色名。</li>
+                                <li data-i18n="console.birthday.variableHelp.charLabel">{charLabel}：当前角色的称呼标签；没单独填时使用角色名。</li>
+                                <li data-i18n="console.birthday.variableHelp.time">{time}：当前时间，格式为 HH:mm。</li>
+                                <li data-i18n="console.birthday.variableHelp.hour">{hour}：当前小时，0-23。</li>
+                                <li data-i18n="console.birthday.variableHelp.weekday">{weekday}：当前星期。</li>
+                                <li data-i18n="console.birthday.variableHelp.date">{date}：当前日期，格式为 YYYY-MM-DD。</li>
+                                <li data-i18n="console.birthday.variableHelp.period">{period}：当前时段，例如凌晨、早上、下午、深夜。</li>
+                                <li data-i18n="console.birthday.variableHelp.todayEvent">{todayEvent}：今天命中的日期名称，例如用户生日、角色生日、测试日。</li>
+                                <li data-i18n="console.birthday.variableHelp.daysUntilBirthday">{daysUntilBirthday}：距离本角色生日或这个设定里的用户生日还有几天；生日模式命中当天为 0。</li>
+                                <li data-i18n="console.birthday.variableHelp.tags">行首标签会决定适用日期，例如 测试日==文案 只在“测试日”命中；通用== 或无标签作为兜底。</li>
+                                <li data-i18n="console.birthday.variableHelp.braces">变量可以写成 {time}，也可以写成 {{time}}。</li>
+                            </ul>
+                        </details>
                         <div id="pi_birthday_pool_list" class="pi-chip-list"></div>
                     </div>
                 </details>

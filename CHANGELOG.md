@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Reunion gold visual treatment and manual test buttons for jealousy, birthday, and reunion modes.
 - AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
 - Light console panel themes inspired by the conso-illustrator panel palette: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
+- Birthday / special-date pool variable help and a control to reset today's birthday guard during testing.
 
 ### Changed
 
@@ -33,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
+- Birthday / special-date manual tests now use the selected character's real matching date event and save current per-character date fields before showing the test popup.
 
 ## [1.0.0] - 2026-05-27
 

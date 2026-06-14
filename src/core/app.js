@@ -3802,7 +3802,7 @@ function consumeDateEvent(event) {
     saveSettingsDebounced();
 }
 
-function getTodayDateEvents(characterInfo, now = new Date()) {
+function getTodayDateEvents(characterInfo, now = new Date(), options = {}) {
     const settings = ensureSettings();
     if (!settings.birthdayEnabled) {
         return [];
@@ -3857,7 +3857,26 @@ function getTodayDateEvents(characterInfo, now = new Date()) {
         }
     }
 
-    return events.filter((event) => !isDateEventConsumed(event));
+    return options.includeConsumed ? events : events.filter((event) => !isDateEventConsumed(event));
+}
+
+function clearDateEventConsumptionForDate(dateKey = formatLocalDateKey()) {
+    const settings = ensureSettings();
+    if (!settings.dateEventConsumed || typeof settings.dateEventConsumed !== 'object') {
+        settings.dateEventConsumed = {};
+        return false;
+    }
+    let changed = false;
+    for (const key of Object.keys(settings.dateEventConsumed)) {
+        if (settings.dateEventConsumed[key] === dateKey) {
+            delete settings.dateEventConsumed[key];
+            changed = true;
+        }
+    }
+    if (changed) {
+        saveSettingsDebounced();
+    }
+    return changed;
 }
 
 function getJealousyDepartureContext(now = new Date()) {
@@ -6617,9 +6636,18 @@ function bindAngerCardControls(root) {
     }
 }
 
+function getBirthdayTestDateEvent(characterInfo, now = new Date()) {
+    return getTodayDateEvents(characterInfo, now, { includeConsumed: true })[0] || {
+        key: 'test:birthday',
+        dateKey: formatLocalDateKey(now),
+        name: t('console.birthday.testEventName'),
+    };
+}
+
 function buildTestTemplateContext(mode, characterInfo) {
     const settings = ensureSettings();
-    const base = buildBaseTemplateContext(characterInfo);
+    const now = new Date();
+    const base = buildBaseTemplateContext(characterInfo, { now });
     if (mode === 'jealousy') {
         const other = getAvailableCharacters().find((entry) => entry.key !== characterInfo?.key);
         return {
@@ -6630,15 +6658,12 @@ function buildTestTemplateContext(mode, characterInfo) {
         };
     }
     if (mode === 'birthday') {
+        const dateEvent = getBirthdayTestDateEvent(characterInfo, now);
         return {
             ...base,
-            todayEvent: t('console.birthday.testEventName'),
+            todayEvent: dateEvent.name,
             daysUntilBirthday: '0',
-            dateEvent: {
-                key: 'test:birthday',
-                dateKey: formatLocalDateKey(),
-                name: t('console.birthday.testEventName'),
-            },
+            dateEvent,
         };
     }
     if (mode === 'reunion') {
@@ -6659,10 +6684,21 @@ function showContextualModeTest(root, mode) {
         notify('warning', t('console.dialogue.noCharacters'));
         return;
     }
+    if (mode === 'birthday') {
+        persistCharacterContextualSettings(root);
+        saveSettingsDebounced();
+    }
+    const templateContext = buildTestTemplateContext(mode, characterInfo);
+    if (mode === 'birthday' && getBirthdayMessages(characterInfo, templateContext).length <= 0) {
+        notify('warning', t('console.birthday.noMatchingLines', {
+            event: templateContext.todayEvent || t('console.birthday.testEventName'),
+        }));
+        return;
+    }
     state.invitationFromConsoleTest = true;
     closeConsole();
     showInvitation(characterInfo, mode, {
-        templateContext: buildTestTemplateContext(mode, characterInfo),
+        templateContext,
     });
 }
 
@@ -6674,6 +6710,7 @@ function bindContextualModeControls(root) {
     const characterJealousyChance = root.querySelector('#pi_character_jealousy_chance');
     const testJealousy = root.querySelector('#pi_jealousy_test');
     const testBirthday = root.querySelector('#pi_birthday_test');
+    const resetBirthdayGuard = root.querySelector('#pi_birthday_guard_reset');
     const testReunion = root.querySelector('#pi_reunion_test');
 
     const saveCharacterContext = () => {
@@ -6702,6 +6739,12 @@ function bindContextualModeControls(root) {
     }
     if (testBirthday) {
         testBirthday.addEventListener('click', () => showContextualModeTest(root, 'birthday'));
+    }
+    if (resetBirthdayGuard) {
+        resetBirthdayGuard.addEventListener('click', () => {
+            clearDateEventConsumptionForDate();
+            notify('success', t('console.birthday.guardResetDone'));
+        });
     }
     if (testReunion) {
         testReunion.addEventListener('click', () => showContextualModeTest(root, 'reunion'));
