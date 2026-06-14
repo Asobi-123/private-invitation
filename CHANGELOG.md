@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Per-character user birthday and special-date settings, alongside character birthdays and global defaults.
 - Birthday / special-date one-day guard: once birthday mode successfully displays on a local date, later callbacks that day skip birthday mode.
 - Birthday / special-date pool line tags: `用户生日==`, `角色生日==`, event-name tags, and `通用==` fallback, with `--`, `==`, `：：`, and `::` separators.
-- SSR reunion checks based on `date_last_chat` or `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
+- SSR reunion checks based on the last message time from `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
 - Reunion gold visual treatment and manual preview buttons for jealousy, birthday, and reunion modes.
 - AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
 - Light console panel themes inspired by the conso-illustrator panel palette: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
-- SSR reunion now reads last-chat time from more SillyTavern sources, including top-level `date_last_chat`, chat-list timestamps, and chat file-name dates, and no longer caches failed last-chat lookups.
+- SSR reunion now prefers chat-list last-message timestamps over SillyTavern `date_last_chat` stats, supports month-name `send_date` formats, and ignores old failed last-chat caches.
 - Birthday / special-date manual previews now use the selected character's real matching date event and save current per-character date fields before showing the preview popup.
 - Contextual manual previews now return to the originating console tab instead of jumping to Run Control, and preview dismissals no longer trigger retention or continue-pick chains.
 - Warm-birthday AI generation now explicitly stays on user / character birthdays instead of drifting into anniversary lines.

@@ -75,6 +75,32 @@ const birthdayLineTagSeparators = ['--', '==', '：：', '::'];
 const birthdayGenericTags = ['通用', 'general', 'generic', 'default', 'common'];
 const birthdayUserBirthdayTags = ['用户生日', 'user birthday', 'user-birthday', 'userbirthday'];
 const birthdayCharacterBirthdayTags = ['角色生日', 'character birthday', 'character-birthday', 'characterbirthday'];
+const monthNameIndexes = {
+    jan: 1,
+    january: 1,
+    feb: 2,
+    february: 2,
+    mar: 3,
+    march: 3,
+    apr: 4,
+    april: 4,
+    may: 5,
+    jun: 6,
+    june: 6,
+    jul: 7,
+    july: 7,
+    aug: 8,
+    august: 8,
+    sep: 9,
+    sept: 9,
+    september: 9,
+    oct: 10,
+    october: 10,
+    nov: 11,
+    november: 11,
+    dec: 12,
+    december: 12,
+};
 const builtinDateEventLabelAliases = {
     'invitation.event.newYear': ['元旦', 'new year', 'new year day', "new year's day"],
     'invitation.event.valentine': ['情人节', 'valentine', 'valentines day', "valentine's day"],
@@ -1300,6 +1326,32 @@ function parseStructuredTimestamp(value) {
         return 0;
     }
 
+    const monthName = text.match(/\b([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]m)?)?/i);
+    if (monthName) {
+        const month = monthNameIndexes[String(monthName[1] || '').toLowerCase()];
+        if (month) {
+            let hour = Number(monthName[4] || 0);
+            const minute = Number(monthName[5] || 0);
+            const second = Number(monthName[6] || 0);
+            const meridiem = String(monthName[7] || '').toLowerCase();
+            if (meridiem === 'pm' && hour < 12) {
+                hour += 12;
+            } else if (meridiem === 'am' && hour === 12) {
+                hour = 0;
+            }
+            return buildLocalTimestamp([
+                '',
+                monthName[3],
+                String(month),
+                monthName[2],
+                String(hour),
+                String(minute),
+                String(second),
+                '0',
+            ]);
+        }
+    }
+
     const humanized = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})@(\d{1,2})h(\d{1,2})m(\d{1,2})s(?:(\d{1,3})ms)?/);
     if (humanized) {
         return buildLocalTimestamp(humanized);
@@ -1350,12 +1402,6 @@ function getChatInfoTimestamp(chatInfo) {
     return getMaxTimestamp(
         chatInfo.last_mes,
         chatInfo.send_date,
-        chatInfo.date_last_chat,
-        chatInfo.updated_at,
-        chatInfo.modified_at,
-        chatInfo.mtimeMs,
-        chatInfo.file_name,
-        chatInfo.file_id,
     );
 }
 
@@ -4051,28 +4097,43 @@ async function getCharacterLastChatInfo(characterInfo) {
         return { timestamp: 0, never: true };
     }
 
-    const direct = getCharacterDirectLastChatTimestamp(characterInfo);
-    if (direct) {
-        return { timestamp: direct, never: false };
-    }
-
     const cache = state.lastChatTimeCache.get(characterInfo.key);
-    if (cache && Date.now() - cache.checkedAt < 5 * 60 * 1000) {
+    if (cache?.source && Date.now() - cache.checkedAt < 5 * 60 * 1000) {
         return cache;
     }
 
     const chats = await getPastChatsForCharacter(characterInfo);
-    const maxTime = chats.reduce((max, chatInfo) => Math.max(max, getChatInfoTimestamp(chatInfo)), 0);
-    const result = {
-        timestamp: maxTime,
-        never: !chats.length || !maxTime,
-        checkedAt: Date.now(),
-    };
-    if (maxTime) {
+    const messageTime = chats.reduce((max, chatInfo) => Math.max(max, getChatInfoTimestamp(chatInfo)), 0);
+    if (messageTime) {
+        const result = {
+            timestamp: messageTime,
+            never: false,
+            checkedAt: Date.now(),
+            source: 'chatMessages',
+        };
         state.lastChatTimeCache.set(characterInfo.key, result);
-    } else {
-        state.lastChatTimeCache.delete(characterInfo.key);
+        return result;
     }
+
+    const direct = getCharacterDirectLastChatTimestamp(characterInfo);
+    if (direct) {
+        const result = {
+            timestamp: direct,
+            never: false,
+            checkedAt: Date.now(),
+            source: 'characterStats',
+        };
+        state.lastChatTimeCache.set(characterInfo.key, result);
+        return result;
+    }
+
+    const result = {
+        timestamp: 0,
+        never: true,
+        checkedAt: Date.now(),
+        source: 'none',
+    };
+    state.lastChatTimeCache.delete(characterInfo.key);
     return result;
 }
 
