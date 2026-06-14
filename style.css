@@ -150,7 +150,7 @@
     --pi-control-focus-ring: color-mix(in srgb, var(--pi-accent) 22%, transparent);
 }
 
-.pi-modal :is(
+.pi-overlay .pi-modal :is(
     input.text_pole,
     textarea.text_pole,
     select.text_pole,
@@ -160,24 +160,27 @@
 ):where(
     :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
 ) {
-    background: var(--pi-control-bg);
-    color: var(--pi-control-text);
-    border: 1px solid var(--pi-control-border);
-    caret-color: var(--pi-control-text);
+    background: var(--pi-control-bg) !important;
+    background-color: var(--pi-control-bg) !important;
+    color: var(--pi-control-text) !important;
+    -webkit-text-fill-color: var(--pi-control-text) !important;
+    border: 1px solid var(--pi-control-border) !important;
+    caret-color: var(--pi-control-text) !important;
 }
 
-.pi-modal :is(
+.pi-overlay .pi-modal :is(
     input.text_pole,
     textarea.text_pole,
     .pi-textarea
 ):where(
     :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
 )::placeholder {
-    color: var(--pi-control-text-muted);
-    opacity: 1;
+    color: var(--pi-control-text-muted) !important;
+    -webkit-text-fill-color: var(--pi-control-text-muted) !important;
+    opacity: 1 !important;
 }
 
-.pi-modal :is(
+.pi-overlay .pi-modal :is(
     input.text_pole,
     textarea.text_pole,
     select.text_pole,
@@ -187,13 +190,13 @@
 ):where(
     :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
 ):focus-visible {
-    border-color: var(--pi-control-border-focus);
-    outline: 2px solid var(--pi-control-focus-ring);
+    border-color: var(--pi-control-border-focus) !important;
+    outline: 2px solid var(--pi-control-focus-ring) !important;
     outline-offset: 1px;
-    box-shadow: 0 0 0 1px var(--pi-control-border-focus);
+    box-shadow: 0 0 0 1px var(--pi-control-border-focus) !important;
 }
 
-.pi-modal :is(
+.pi-overlay .pi-modal :is(
     input.text_pole,
     textarea.text_pole,
     select.text_pole,
@@ -203,18 +206,21 @@
 ):where(
     :not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"])
 ):is(:disabled, [readonly]) {
-    background: var(--pi-control-bg-disabled);
-    color: var(--pi-control-text-muted);
-    border-color: color-mix(in srgb, var(--pi-control-border) 70%, transparent);
-    opacity: 1;
+    background: var(--pi-control-bg-disabled) !important;
+    background-color: var(--pi-control-bg-disabled) !important;
+    color: var(--pi-control-text-muted) !important;
+    -webkit-text-fill-color: var(--pi-control-text-muted) !important;
+    border-color: color-mix(in srgb, var(--pi-control-border) 70%, transparent) !important;
+    opacity: 1 !important;
     cursor: not-allowed;
 }
 
-.pi-modal select.text_pole option,
-.pi-modal .pi-api-profile-select option,
-.pi-modal .pi-api-model-select option {
-    background: var(--pi-control-bg);
-    color: var(--pi-control-text);
+.pi-overlay .pi-modal select.text_pole option,
+.pi-overlay .pi-modal .pi-api-profile-select option,
+.pi-overlay .pi-modal .pi-api-model-select option {
+    background: var(--pi-control-bg) !important;
+    background-color: var(--pi-control-bg) !important;
+    color: var(--pi-control-text) !important;
 }
 
 .pi-pool-toolbar {
@@ -1468,17 +1474,20 @@
     flex: 1 1 120px;
     min-width: 80px;
     border: 0;
-    background: transparent;
-    color: var(--pi-control-text, var(--pi-text));
-    caret-color: var(--pi-control-text, var(--pi-text));
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--pi-control-text, var(--pi-text)) !important;
+    -webkit-text-fill-color: var(--pi-control-text, var(--pi-text)) !important;
+    caret-color: var(--pi-control-text, var(--pi-text)) !important;
     font-size: 13px;
     padding: 2px 4px;
-    outline: none;
+    outline: none !important;
 }
 
 .pi-tag-chip-pool__input::placeholder {
-    color: var(--pi-control-text-muted, var(--pi-dim));
-    opacity: 1;
+    color: var(--pi-control-text-muted, var(--pi-dim)) !important;
+    -webkit-text-fill-color: var(--pi-control-text-muted, var(--pi-dim)) !important;
+    opacity: 1 !important;
 }
 
 .pi-chip--filter {
