@@ -3084,6 +3084,79 @@
         0 2px 8px rgba(0, 0, 0, 0.85);
 }
 
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] {
+    --pi-reunion-gold: #fff0a6;
+    --pi-reunion-ex: #ff5bd8;
+    border-color: color-mix(in srgb, var(--pi-reunion-ex) 48%, var(--pi-reunion-gold));
+    box-shadow:
+        0 0 calc(26px + 46px * var(--pi-reunion-intensity, 0.95)) color-mix(in srgb, var(--pi-reunion-gold) calc(62% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 calc(20px + 34px * var(--pi-reunion-intensity, 0.95)) color-mix(in srgb, var(--pi-reunion-ex) calc(42% * var(--pi-reunion-intensity, 0.95)), transparent),
+        inset 0 0 calc(22px + 28px * var(--pi-reunion-intensity, 0.95)) color-mix(in srgb, #ffffff calc(28% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 24px 64px rgba(0, 0, 0, 0.62);
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"]::before {
+    background:
+        radial-gradient(circle at 14% 20%, color-mix(in srgb, #ffffff calc(52% * var(--pi-reunion-intensity, 0.95)), transparent) 0 2px, transparent 4px),
+        radial-gradient(circle at 26% 76%, color-mix(in srgb, var(--pi-reunion-ex) calc(42% * var(--pi-reunion-intensity, 0.95)), transparent) 0 2px, transparent 4px),
+        radial-gradient(circle at 72% 16%, color-mix(in srgb, var(--pi-reunion-gold) calc(54% * var(--pi-reunion-intensity, 0.95)), transparent) 0 2px, transparent 5px),
+        radial-gradient(circle at 82% 68%, color-mix(in srgb, #ffffff calc(45% * var(--pi-reunion-intensity, 0.95)), transparent) 0 1px, transparent 4px),
+        conic-gradient(from 40deg at 50% 50%, transparent 0 18%, color-mix(in srgb, var(--pi-reunion-ex) calc(18% * var(--pi-reunion-intensity, 0.95)), transparent) 26%, transparent 36%, color-mix(in srgb, var(--pi-reunion-gold) calc(20% * var(--pi-reunion-intensity, 0.95)), transparent) 52%, transparent 68%, color-mix(in srgb, #ffffff calc(16% * var(--pi-reunion-intensity, 0.95)), transparent) 82%, transparent 100%);
+    opacity: calc(0.48 + 0.48 * var(--pi-reunion-intensity, 0.95));
+    animation-duration: 3.2s;
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"]::after {
+    background: linear-gradient(115deg, transparent 28%, color-mix(in srgb, #ffffff calc(58% * var(--pi-reunion-intensity, 0.95)), transparent) 43%, color-mix(in srgb, var(--pi-reunion-ex) calc(44% * var(--pi-reunion-intensity, 0.95)), transparent) 49%, color-mix(in srgb, var(--pi-reunion-gold) calc(44% * var(--pi-reunion-intensity, 0.95)), transparent) 55%, transparent 72%);
+    animation-duration: 2.8s;
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-cover-shade {
+    background:
+        radial-gradient(ellipse at 50% 8%, color-mix(in srgb, #ffffff calc(34% * var(--pi-reunion-intensity, 0.95)), transparent), transparent 44%),
+        radial-gradient(ellipse at 70% 26%, color-mix(in srgb, var(--pi-reunion-ex) calc(24% * var(--pi-reunion-intensity, 0.95)), transparent), transparent 56%),
+        radial-gradient(ellipse at 50% 105%, color-mix(in srgb, var(--pi-reunion-gold) calc(60% * var(--pi-reunion-intensity, 0.95)), transparent), transparent 64%),
+        linear-gradient(to top, rgba(10, 4, 18, 0.86), rgba(20, 10, 28, 0.2) 48%, rgba(0, 0, 0, 0.5));
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-frame {
+    border-color: color-mix(in srgb, var(--pi-reunion-ex) 42%, var(--pi-reunion-gold));
+    box-shadow:
+        inset 0 0 26px color-mix(in srgb, #ffffff calc(30% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 28px color-mix(in srgb, var(--pi-reunion-gold) calc(48% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 20px color-mix(in srgb, var(--pi-reunion-ex) calc(36% * var(--pi-reunion-intensity, 0.95)), transparent);
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-kicker {
+    background: linear-gradient(90deg, rgba(48, 12, 58, 0.9), color-mix(in srgb, var(--pi-reunion-ex) 36%, #2a2100), color-mix(in srgb, var(--pi-reunion-gold) 54%, #2a2100));
+    border-color: color-mix(in srgb, var(--pi-reunion-ex) 45%, var(--pi-reunion-gold));
+    color: #fffaf0;
+    box-shadow:
+        0 0 18px color-mix(in srgb, var(--pi-reunion-gold) calc(56% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 12px color-mix(in srgb, var(--pi-reunion-ex) calc(42% * var(--pi-reunion-intensity, 0.95)), transparent);
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-name,
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-message--barrage span {
+    color: #fffaf0;
+    text-shadow:
+        0 0 20px color-mix(in srgb, #ffffff calc(42% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 18px color-mix(in srgb, var(--pi-reunion-gold) calc(78% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 12px color-mix(in srgb, var(--pi-reunion-ex) calc(48% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-message--bubble,
+.pi-invitation-dialog--reunion .pi-invitation-card[data-pi-reunion-tier="EX"] .pi-invitation-message--banner {
+    border-color: color-mix(in srgb, var(--pi-reunion-ex) 36%, var(--pi-reunion-gold));
+    background: color-mix(in srgb, rgba(20, 8, 28, 0.92) 72%, var(--pi-reunion-gold) 12%);
+    box-shadow:
+        0 0 22px color-mix(in srgb, var(--pi-reunion-gold) calc(50% * var(--pi-reunion-intensity, 0.95)), transparent),
+        0 0 14px color-mix(in srgb, var(--pi-reunion-ex) calc(36% * var(--pi-reunion-intensity, 0.95)), transparent),
+        inset 0 0 14px color-mix(in srgb, #ffffff calc(20% * var(--pi-reunion-intensity, 0.95)), transparent);
+    color: #fffaf0;
+}
+
 @keyframes pi-reunion-sweep {
     0%, 28% {
         transform: translateX(-60%);

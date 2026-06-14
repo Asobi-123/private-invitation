@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
 - SSR reunion now prefers chat-list last-message timestamps over SillyTavern `date_last_chat` stats, supports month-name `send_date` formats, and ignores old failed last-chat caches.
+- SSR and EX reunion now display distinct kickers and EX gets a stronger white-gold / magenta visual treatment instead of looking identical to SSR.
 - Birthday / special-date manual previews now use the selected character's real matching date event and save current per-character date fields before showing the preview popup.
 - Contextual manual previews now return to the originating console tab instead of jumping to Run Control, and preview dismissals no longer trigger retention or continue-pick chains.
 - Warm-birthday AI generation now explicitly stays on user / character birthdays instead of drifting into anniversary lines.

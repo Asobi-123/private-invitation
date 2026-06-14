@@ -3168,12 +3168,19 @@ function applyAdaptiveColorsToDialog(dialog, characterInfo) {
     });
 }
 
-function getInvitationKicker(mode) {
+function getReunionTier(templateContext = {}) {
+    return String(templateContext.reunionTier || 'SSR').toUpperCase() === 'EX' ? 'EX' : 'SSR';
+}
+
+function getInvitationKicker(mode, templateContext = {}) {
     if (mode === 'anger') return t('invitation.angerKicker');
     if (mode === 'retention') return t('invitation.retentionKicker');
     if (mode === 'jealousy') return t('invitation.jealousyKicker');
     if (mode === 'birthday') return t('invitation.birthdayKicker');
-    if (mode === 'reunion') return t('invitation.reunionKicker');
+    if (mode === 'reunion') {
+        const tier = getReunionTier(templateContext);
+        return t(tier === 'EX' ? 'invitation.reunionKickerEx' : 'invitation.reunionKickerSsr');
+    }
     return t('invitation.kicker');
 }
 
@@ -3181,6 +3188,7 @@ function createInvitationDialog(characterInfo, modeOrRetention = false, template
     const mode = normalizeInvitationMode(modeOrRetention);
     const retention = mode === 'retention';
     const anger = mode === 'anger';
+    const reunionTier = mode === 'reunion' ? getReunionTier(templateContext) : '';
     const specialMode = mode !== 'primary' ? ` pi-invitation-dialog--${mode}` : '';
     const settings = resolveCharacterStyle(characterInfo);
     const globalSettings = ensureSettings();
@@ -3191,11 +3199,13 @@ function createInvitationDialog(characterInfo, modeOrRetention = false, template
         styleVars += `;--pi-anger-accent:${globalSettings.angerAccentColor || '#c2415a'}`;
     }
     if (mode === 'reunion') {
-        styleVars += `;--pi-reunion-intensity:${(globalSettings.reunionVisualIntensity ?? 70) / 100}`;
+        const baseIntensity = (globalSettings.reunionVisualIntensity ?? 70) / 100;
+        const reunionIntensity = reunionTier === 'EX' ? Math.min(1.15, baseIntensity + 0.25) : baseIntensity;
+        styleVars += `;--pi-reunion-intensity:${reunionIntensity}`;
     }
     dialog.style.cssText = styleVars;
 
-    const kickerText = getInvitationKicker(mode);
+    const kickerText = getInvitationKicker(mode, templateContext);
     const acceptText = anger
         ? t('invitation.angerEnter')
         : (retention ? t('invitation.acceptRetention') : t('invitation.accept'));
@@ -3227,7 +3237,7 @@ function createInvitationDialog(characterInfo, modeOrRetention = false, template
                 </div>`;
 
     dialog.innerHTML = `
-        <div class="pi-invitation-card" data-pi-mode="${escapeHtml(mode)}" data-pi-cover-effect="${escapeHtml(settings.coverEffect || 'breath')}" data-pi-cover-fit="${escapeHtml(settings.coverFit || 'contain')}" data-pi-bubble-position="${escapeHtml(settings.bubblePosition || 'top-right')}" data-pi-bubble-shape="${escapeHtml(settings.bubbleShape || 'pill')}">
+        <div class="pi-invitation-card" data-pi-mode="${escapeHtml(mode)}" data-pi-reunion-tier="${escapeHtml(reunionTier)}" data-pi-cover-effect="${escapeHtml(settings.coverEffect || 'breath')}" data-pi-cover-fit="${escapeHtml(settings.coverFit || 'contain')}" data-pi-bubble-position="${escapeHtml(settings.bubblePosition || 'top-right')}" data-pi-bubble-shape="${escapeHtml(settings.bubbleShape || 'pill')}">
             <img class="pi-invitation-cover-backdrop" src="${escapeHtml(getCharacterAvatarUrl(characterInfo))}" alt="" aria-hidden="true">
             <img class="pi-invitation-cover" src="${escapeHtml(getCharacterAvatarUrl(characterInfo))}" alt="">
             <div class="pi-invitation-cover-shade"></div>
