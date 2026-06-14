@@ -77,7 +77,7 @@ SillyTavern extension menu → **Private Invitation**. A centered console opens 
 ### Step 2: Choose which characters can appear
 Switch to **Invitation Characters**:
 - Tick the characters you want the homepage to surface
-- Start with 3–5 for testing; too many dilutes each one's chance
+- Start with 3–5 characters; too many dilutes each one's chance
 - Tick none = all characters are eligible
 
 ### Step 3: Give them lines
@@ -143,7 +143,7 @@ Tags with attributes match too — entering `div` also strips `<div class="x">..
 | One popup per refresh / page load | Show once each SillyTavern startup |
 | Cooldown timer (N minutes) | Show again after N minutes since last popup |
 | Every return to homepage | Show whenever the user leaves chat and returns to home |
-| Manual only (no auto-popup) | Auto-popup off; only manual test buttons trigger |
+| Manual trigger only (no auto-popup) | Auto-popup off; only console preview buttons trigger |
 
 ---
 

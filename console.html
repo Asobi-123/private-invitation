@@ -167,7 +167,7 @@
                         <span class="pi-muted" data-i18n="console.anger.currentCountLabel">当前累计拒绝次数</span>
                         <strong id="pi_anger_current_count" class="pi-anger-stats-value">0</strong>
                         <button id="pi_anger_reset_count" type="button" class="menu_button" data-i18n="console.anger.resetCountButton">手动归零</button>
-                        <button id="pi_anger_test" type="button" class="menu_button" data-i18n="console.anger.testButton">手动测试生气邀约</button>
+                        <button id="pi_anger_test" type="button" class="menu_button" data-i18n="console.anger.testButton">预览生气邀约</button>
                     </div>
                     <div class="pi-field">
                         <label for="pi_anger_threshold" data-i18n="console.anger.threshold">触发阈值（累计拒绝多少次）</label>
@@ -214,6 +214,9 @@
                         <span class="pi-muted" data-i18n="console.copy.jealousyPoolNote">从另一个角色聊天回主页后，可从有吃醋文案池的角色中触发。</span>
                     </summary>
                     <div class="pi-field">
+                        <small class="pi-muted" data-i18n="console.jealousy.homepageRuleNote">吃醋仍受「主页弹出逻辑」限制：只有主页规则允许本次召回时，才会继续判定最近聊天角色、有效时间窗口和吃醋事件概率。若想让每次从角色聊天回主页都有机会触发，可把主页弹出逻辑设为「每次回到主页」。</small>
+                    </div>
+                    <div class="pi-field">
                         <label for="pi_character_jealousy_label" data-i18n="console.jealousy.characterLabel">本角色吃醋称呼</label>
                         <input id="pi_character_jealousy_label" type="text" class="text_pole" data-i18n-placeholder="console.jealousy.characterLabelPlaceholder" placeholder="可选，例如：那个女人 / 那个人 / 前辈">
                         <small class="pi-muted" data-i18n="console.jealousy.characterLabelNote">用于别人提到这个角色时的 {lastChar}。留空则用角色名。</small>
@@ -224,7 +227,7 @@
                         <small class="pi-muted" data-i18n="console.jealousy.characterChanceNote">留空时使用运行控制里的事件概率作为默认权重。</small>
                     </div>
                     <div class="pi-actions-row pi-actions-row--compact">
-                        <button id="pi_jealousy_test" type="button" class="menu_button" data-i18n="console.jealousy.testButton">测试吃醋邀约</button>
+                        <button id="pi_jealousy_test" type="button" class="menu_button" data-i18n="console.jealousy.testButton">预览吃醋邀约</button>
                     </div>
                     <div id="pi_jealousy_count" class="pi-muted"></div>
                     <div class="pi-field">
@@ -259,7 +262,7 @@
                         <small class="pi-muted" data-i18n="console.birthday.characterDateEventsNote">用于这个角色自己的纪念日、宝宝生日、剧情日等。</small>
                     </div>
                     <div class="pi-actions-row pi-actions-row--compact">
-                        <button id="pi_birthday_test" type="button" class="menu_button" data-i18n="console.birthday.testButton">测试日期邀约</button>
+                        <button id="pi_birthday_test" type="button" class="menu_button" data-i18n="console.birthday.testButton">预览日期邀约</button>
                         <button id="pi_birthday_guard_reset" type="button" class="menu_button" data-i18n="console.birthday.guardResetButton">重置今日日期保底</button>
                     </div>
                     <div id="pi_birthday_count" class="pi-muted"></div>
@@ -280,10 +283,10 @@
                                 <li data-i18n="console.birthday.variableHelp.weekday">{weekday}：当前星期。</li>
                                 <li data-i18n="console.birthday.variableHelp.date">{date}：当前日期，格式为 YYYY-MM-DD。</li>
                                 <li data-i18n="console.birthday.variableHelp.period">{period}：当前时段，例如凌晨、早上、下午、深夜。</li>
-                                <li data-i18n="console.birthday.variableHelp.todayEvent">{todayEvent}：今天命中的日期名称，例如用户生日、角色生日、测试日。</li>
+                                <li data-i18n="console.birthday.variableHelp.todayEvent">{todayEvent}：今天命中的日期名称，例如用户生日、角色生日、相遇纪念日。</li>
                                 <li data-i18n="console.birthday.variableHelp.daysUntilCharacterBirthday">{daysUntilCharacterBirthday}：距离本角色生日还有几天；没填本角色生日时为空。</li>
                                 <li data-i18n="console.birthday.variableHelp.daysUntilUserBirthday">{daysUntilUserBirthday}：距离这个设定里的用户生日还有几天；没填用户生日时为空。</li>
-                                <li data-i18n="console.birthday.variableHelp.tags">行首标签会决定适用日期，例如 测试日==文案 只在“测试日”命中；通用== 或无标签作为兜底。</li>
+                                <li data-i18n="console.birthday.variableHelp.tags">行首标签会决定适用日期，例如 相遇纪念日==文案 只在“相遇纪念日”命中；通用== 或无标签作为兜底。</li>
                                 <li data-i18n="console.birthday.variableHelp.braces">变量可以写成 {time}，也可以写成 {{time}}。</li>
                             </ul>
                         </details>
@@ -298,7 +301,7 @@
                         <span class="pi-muted" data-i18n="console.copy.reunionPoolNote">角色被随机抽中后，如果未聊天时长达到阈值，触发 SSR 金光形态。</span>
                     </summary>
                     <div class="pi-actions-row pi-actions-row--compact">
-                        <button id="pi_reunion_test" type="button" class="menu_button" data-i18n="console.reunion.testButton">测试久别重逢邀约</button>
+                        <button id="pi_reunion_test" type="button" class="menu_button" data-i18n="console.reunion.testButton">预览久别重逢邀约</button>
                     </div>
                     <div id="pi_reunion_count" class="pi-muted"></div>
                     <div class="pi-field">
@@ -1064,7 +1067,7 @@
                                 <option value="session" data-i18n="console.pool.trigger.session">每个会话一次</option>
                                 <option value="cooldown" data-i18n="console.pool.trigger.cooldown">冷却后再弹</option>
                                 <option value="everyHome" data-i18n="console.pool.trigger.everyHome">每次回到主页</option>
-                                <option value="manual" data-i18n="console.pool.trigger.manual">只手动测试</option>
+                                <option value="manual" data-i18n="console.pool.trigger.manual">仅手动触发</option>
                             </select>
                         </div>
                         <div class="pi-field">
@@ -1167,7 +1170,7 @@
                         <span class="pi-muted" data-i18n="console.preview.note">预览角色封面上的文字效果。</span>
                     </div>
                     <div id="pi_preview_summary" class="pi-preview-summary"></div>
-                    <button id="pi_test_invite" type="button" class="menu_button pi-test-button" data-i18n="console.preview.testInvite">测试随机邀约</button>
+                    <button id="pi_test_invite" type="button" class="menu_button pi-test-button" data-i18n="console.preview.testInvite">预览随机邀约</button>
                 </div>
             </section>
         </div>

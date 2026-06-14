@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Birthday / special-date one-day guard: once birthday mode successfully displays on a local date, later callbacks that day skip birthday mode.
 - Birthday / special-date pool line tags: `用户生日==`, `角色生日==`, event-name tags, and `通用==` fallback, with `--`, `==`, `：：`, and `::` separators.
 - SSR reunion checks based on `date_last_chat` or `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
-- Reunion gold visual treatment and manual test buttons for jealousy, birthday, and reunion modes.
+- Reunion gold visual treatment and manual preview buttons for jealousy, birthday, and reunion modes.
 - AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
 - Light console panel themes inspired by the conso-illustrator panel palette: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
-- Birthday / special-date pool variable help and a control to reset today's date guard during testing.
+- Birthday / special-date pool variable help and a control to reset today's date guard while previewing.
 
 ### Changed
 
@@ -35,8 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
-- Birthday / special-date manual tests now use the selected character's real matching date event and save current per-character date fields before showing the test popup.
-- Contextual manual tests now return to the originating console tab instead of jumping to Run Control, and test dismissals no longer trigger retention or continue-pick chains.
+- Birthday / special-date manual previews now use the selected character's real matching date event and save current per-character date fields before showing the preview popup.
+- Contextual manual previews now return to the originating console tab instead of jumping to Run Control, and preview dismissals no longer trigger retention or continue-pick chains.
 - Warm-birthday AI generation now explicitly stays on user / character birthdays instead of drifting into anniversary lines.
 
 ## [1.0.0] - 2026-05-27
@@ -51,7 +51,7 @@ Initial public release.
 - Optional retention round: dismissing the main invitation triggers a second callback at configurable probability (`retentionChance`). Retention uses its own per-character copy pool, not the main pool.
 - Anger mode: when a character is dismissed enough times (`angerThreshold`, default 5), the next callback for that character switches to the anger form. Anger mode has no dismiss path — a configurable countdown (`angerCountdownSeconds`, default 6s, range 3–20) force-enters the chat. Reject count resets on accept by default (`angerResetOnAccept`).
 - Anger-ready characters get scheduling priority: when picking from the pool, any character past the threshold and with anger lines saved is chosen first; the regular pool only runs when no anger-ready character exists.
-- Homepage trigger modes: `session` (one popup per refresh / page load), `cooldown` (re-show after `homepageCooldownMinutes`), `everyHome` (every return to the homepage), and `manual` (auto-popup off; manual test only).
+- Homepage trigger modes: `session` (one popup per refresh / page load), `cooldown` (re-show after `homepageCooldownMinutes`), `everyHome` (every return to the homepage), and `manual` (auto-popup off; manual trigger only).
 - Homepage popup never calls AI at runtime — it only reads saved per-character copy pools, so display stays fast and predictable.
 
 ### Copy pools and AI drafts
@@ -108,7 +108,7 @@ Initial public release.
 - Anger invitation card with red-black rage treatment, flickering opacity, pulsing crack-corner frame, blood-red cover gradient, flashing kicker badge, rage-pulse character name, monospace red countdown panel, four animated anger markers at the corners.
 - All anger colors driven by `--pi-anger-accent` so the color picker re-themes the entire treatment.
 - Anger AI draft generation in the AI tab with eight built-in presets and three intensity levels stacked on top.
-- Anger mode test buttons (copy tab manual test, run-control random invitation) do not increment `rejectCounts` and do not actually enter the chat. After the countdown ends or ESC is pressed, the dialog closes with a toast and the console reopens to the originating tab.
+- Anger mode preview buttons (copy tab manual preview, run-control random invitation preview) do not increment `rejectCounts` and do not actually enter the chat. After the countdown ends or ESC is pressed, the dialog closes with a toast and the console reopens to the originating tab.
 
 ### API modes
 
