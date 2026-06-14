@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - SSR reunion checks based on `date_last_chat` or `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
 - Reunion gold visual treatment and manual test buttons for jealousy, birthday, and reunion modes.
 - AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
+- Light console panel themes inspired by the conso-illustrator panel palette: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
 
 ### Changed
 

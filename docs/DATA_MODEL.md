@@ -355,6 +355,11 @@ The user-facing copy should describe `session` as one popup after each refresh/p
 
 - `midnight` (default — does not depend on SillyTavern theme tokens)
 - `parchment`
+- `mist`
+- `frost`
+- `citrus`
+- `snow`
+- `sakura`
 - `ember`
 - `jade`
 - `st` (follows the SillyTavern theme)

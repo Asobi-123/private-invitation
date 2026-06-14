@@ -101,6 +101,11 @@ const homepageTriggerModes = [
 const panelThemeKeys = [
     'midnight',
     'parchment',
+    'mist',
+    'frost',
+    'citrus',
+    'snow',
+    'sakura',
     'ember',
     'jade',
     'st',
