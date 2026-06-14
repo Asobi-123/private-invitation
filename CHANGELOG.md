@@ -9,37 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Contextual homepage modes: jealousy, birthday / special date, and SSR reunion.
-- Time and date template variables for saved copy pools, including `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, `{daysUntilCharacterBirthday}`, and `{daysUntilUserBirthday}`.
-- Last-chat snapshot support for jealousy lines with `{lastChar}`, `{lastChat}`, and `{minutesSinceLastChat}`.
-- Per-character jealousy appearance weights, so characters with jealousy pools can surface at different rates after a post-chat jealousy event hits.
-- Per-character user birthday and special-date settings, alongside character birthdays and global defaults.
-- Birthday / special-date one-day guard: once birthday mode successfully displays on a local date, later callbacks that day skip birthday mode.
-- Birthday / special-date pool line tags: `用户生日==`, `角色生日==`, event-name tags, and `通用==` fallback, with `--`, `==`, `：：`, and `::` separators.
-- SSR reunion checks based on the last message time from `/api/characters/chats`, with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` variables.
-- Reunion gold visual treatment and manual preview buttons for jealousy, birthday, and reunion modes.
-- AI draft generation scopes for jealousy, birthday / special date, and reunion, each with five built-in prompt presets.
-- Light console panel themes inspired by the conso-illustrator panel palette: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
-- Birthday / special-date pool variable help and a control to reset today's date guard while previewing.
+- New contextual homepage callback modes: jealousy, birthday / special date, and SSR / EX reunion.
+- Jealousy copy pools with last-chat template variables: `{lastChar}`, `{lastChat}`, and `{minutesSinceLastChat}`.
+- Per-character jealousy appearance weights, allowing different characters to appear at different rates when a post-chat jealousy event is eligible.
+- Time and date template variables for saved copy pools: `{time}`, `{hour}`, `{weekday}`, `{date}`, `{period}`, `{todayEvent}`, `{daysUntilCharacterBirthday}`, and `{daysUntilUserBirthday}`.
+- Per-character character birthdays, user birthdays, and custom special dates, with global defaults available as fallbacks.
+- Birthday / special-date line tags: `用户生日==`, `角色生日==`, event-name tags, and `通用==`, with `--`, `==`, `：：`, and `::` separators.
+- A one-day birthday / special-date guard so a successful date callback does not repeat on the same local date.
+- SSR / EX reunion thresholds with `{daysSinceLastChat}`, `{lastChatDate}`, and `{reunionTier}` template variables.
+- Distinct reunion visual treatments for SSR and EX callbacks.
+- AI draft generation scopes for jealousy, birthday / special date, and reunion, each with built-in prompt presets.
+- Manual preview / trigger controls for jealousy, birthday / special date, and reunion callbacks.
+- Light console panel themes: Mist Blue, Frost Blue, Citrus, Snow, and Sakura.
+- Birthday / special-date variable help and a control to reset the current local date guard.
 
 ### Changed
 
-- Homepage mode selection checks anger-ready characters first, then usable birthday / special-date matches, then post-chat jealousy, then reunion / primary.
-- Jealousy, birthday / special-date, and reunion no longer have separate global enable switches; they activate from their actual data and thresholds.
-- Global jealousy chance now controls whether the post-chat jealousy event happens; per-character jealousy values are candidate appearance weights. User birthday and custom date events remain defaults when the drawn character has no specific override.
-- Birthday / special-date events no longer fall back to main invitation lines. If no matching tag, generic tag, or untagged birthday line is available, the date guard is left untouched and the normal mode chain continues.
-- Last-chat snapshots are runtime-only again; stale `sessionStorage` snapshots from earlier builds are cleared on startup so refreshed homepages can still show normal invitations.
-- Entering a new character now overwrites older runtime jealousy snapshots, and navigation snapshots are sampled again after short delays to avoid stale last-chat data during consecutive jealousy tests.
-- A lightweight navigation monitor now catches missed SillyTavern navigation events so last-chat snapshots do not depend on a single event firing at the right time.
+- Homepage mode resolution now selects one mode per popup in this order: anger-ready callbacks, birthday / special date, post-chat jealousy, reunion, then primary.
+- Jealousy, birthday / special-date, and reunion now activate from their configured data and thresholds instead of separate global enable switches.
+- Jealousy uses a global event chance first, then picks from eligible characters by their per-character appearance weights.
+- Birthday / special-date callbacks only use matching tagged lines, generic tagged lines, or untagged birthday / special-date lines. Main invitation lines are not used as date fallback.
+- Last-chat snapshots are kept in the current runtime session, so refreshed homepages do not reuse an older jealousy context.
+- Reunion absence checks prefer the chat list's last-message timestamp, with SillyTavern `date_last_chat` used only as a fallback.
+- User-facing manual popup controls now use preview / manual-trigger wording.
 
 ### Fixed
 
 - Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
-- SSR reunion now prefers chat-list last-message timestamps over SillyTavern `date_last_chat` stats, supports month-name `send_date` formats, and ignores old failed last-chat caches.
-- SSR and EX reunion now display distinct kickers and EX gets a stronger white-gold / magenta visual treatment instead of looking identical to SSR.
-- Birthday / special-date manual previews now use the selected character's real matching date event and save current per-character date fields before showing the preview popup.
-- Contextual manual previews now return to the originating console tab instead of jumping to Run Control, and preview dismissals no longer trigger retention or continue-pick chains.
-- Warm-birthday AI generation now explicitly stays on user / character birthdays instead of drifting into anniversary lines.
+- Reunion detection supports month-name `send_date` values from SillyTavern chat metadata.
+- SSR and EX reunion callbacks now use distinct labels and visual intensity.
 
 ## [1.0.0] - 2026-05-27
 
