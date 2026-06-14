@@ -731,6 +731,7 @@ const state = {
     activeChatCharacter: null,
     lastChatCharacter: null,
     invitationFromConsoleTest: false,
+    invitationTestReturnTab: '',
     aiBatchAbortRequested: false,
     aiBatchActiveKind: null,
     shownThisRound: new Set(),
@@ -3121,11 +3122,10 @@ function createInvitationDialog(characterInfo, modeOrRetention = false, template
         event.preventDefault();
         if (anger) {
             if (state.invitationFromConsoleTest) {
-                state.invitationFromConsoleTest = false;
                 stopAngerCountdown(dialog);
                 closeActiveInvitation();
                 notify('success', t('invitation.testDone'));
-                openConsole(state.activeTab || 'copy');
+                finishInvitationTest('copy');
             }
             return;
         }
@@ -3184,11 +3184,10 @@ async function showInvitation(characterInfo = pickRandom(resolvePoolCharacters()
 
 async function acceptInvitation(characterInfo, modeOrRetention = 'primary') {
     if (state.invitationFromConsoleTest) {
-        state.invitationFromConsoleTest = false;
         stopAngerCountdown(state.activeInvitation);
         closeActiveInvitation();
         notify('success', t('invitation.testDone'));
-        openConsole(state.activeTab || 'copy');
+        finishInvitationTest('copy');
         return false;
     }
     if (!isSillyTavernReadyForChatSwitch()) {
@@ -3258,9 +3257,21 @@ function stopAngerCountdown(dialog) {
     }
 }
 
+function beginInvitationTest(returnTab = state.activeTab || 'copy') {
+    state.invitationFromConsoleTest = true;
+    state.invitationTestReturnTab = returnTab || state.activeTab || 'copy';
+}
+
+function finishInvitationTest(fallbackTab = 'copy') {
+    const returnTab = state.invitationTestReturnTab || state.activeTab || fallbackTab;
+    state.invitationFromConsoleTest = false;
+    state.invitationTestReturnTab = '';
+    openConsole(returnTab);
+}
+
 function handleInvitationDismiss(characterInfo, retention = false) {
     const settings = ensureSettings();
-    if (!retention && Math.random() * 100 < settings.retentionChance) {
+    if (!state.invitationFromConsoleTest && !retention && Math.random() * 100 < settings.retentionChance) {
         showInvitation(characterInfo, 'retention');
         return;
     }
@@ -3273,7 +3284,7 @@ function handleInvitationDismiss(characterInfo, retention = false) {
         state.shownThisRound.add(characterInfo.key);
     }
 
-    if (settings.continueOnDismiss && state.continueCount < settings.continuePickLimit) {
+    if (!state.invitationFromConsoleTest && settings.continueOnDismiss && state.continueCount < settings.continuePickLimit) {
         const pool = resolvePoolCharacters().filter((c) => !state.shownThisRound.has(c.key));
         if (pool.length) {
             state.continueCount += 1;
@@ -3288,7 +3299,7 @@ function handleInvitationDismiss(characterInfo, retention = false) {
     state.continueCount = 0;
     closeActiveInvitation();
     if (wasTest) {
-        openConsole('control');
+        finishInvitationTest('copy');
     }
 }
 
@@ -6562,7 +6573,7 @@ function bindAngerCardControls(root) {
                 notify('warning', t('console.dialogue.noCharacters'));
                 return;
             }
-            state.invitationFromConsoleTest = true;
+            beginInvitationTest(state.activeTab || 'copy');
             closeConsole();
             showInvitation(characterInfo, 'anger');
         });
@@ -6652,7 +6663,7 @@ function showContextualModeTest(root, mode) {
         }));
         return;
     }
-    state.invitationFromConsoleTest = true;
+    beginInvitationTest(state.activeTab || 'copy');
     closeConsole();
     showInvitation(characterInfo, mode, {
         templateContext,
@@ -7487,14 +7498,13 @@ function bindConsoleEvents(root) {
     if (testInvite) {
         testInvite.addEventListener('click', () => {
             syncSettingsFromDom(root);
-            state.invitationFromConsoleTest = true;
+            beginInvitationTest(state.activeTab || 'control');
             state.shownThisRound.clear();
             state.continueCount = 0;
             closeConsole();
             maybeShowHomepageInvitation(true).catch((error) => {
                 console.error('[Private Invitation] Failed to show test invitation', error);
-                state.invitationFromConsoleTest = false;
-                openConsole(state.activeTab || 'control');
+                finishInvitationTest('control');
             });
         });
     }

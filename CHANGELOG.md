@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Console text inputs, textareas, selects, placeholders, disabled states, and select options now use scoped panel control colors so they remain readable across built-in panel themes and SillyTavern themes.
 - Birthday / special-date manual tests now use the selected character's real matching date event and save current per-character date fields before showing the test popup.
+- Contextual manual tests now return to the originating console tab instead of jumping to Run Control, and test dismissals no longer trigger retention or continue-pick chains.
+- Warm-birthday AI generation now explicitly stays on user / character birthdays instead of drifting into anniversary lines.
 
 ## [1.0.0] - 2026-05-27
 
