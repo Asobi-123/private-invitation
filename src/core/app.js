@@ -1262,15 +1262,110 @@ function getPeriodLabel(date = new Date()) {
     return t('invitation.period.night');
 }
 
+function normalizeTimestampNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number <= 0) {
+        return 0;
+    }
+    if (number > 100000000000000) {
+        return Math.floor(number / 1000);
+    }
+    if (number < 100000000000) {
+        return Math.floor(number * 1000);
+    }
+    return Math.floor(number);
+}
+
+function buildLocalTimestamp(parts) {
+    const year = Number(parts?.[1]);
+    const month = Number(parts?.[2]);
+    const day = Number(parts?.[3]);
+    const hour = Number(parts?.[4] || 0);
+    const minute = Number(parts?.[5] || 0);
+    const second = Number(parts?.[6] || 0);
+    const millisecond = Number(parts?.[7] || 0);
+    if (![year, month, day, hour, minute, second, millisecond].every(Number.isFinite)) {
+        return 0;
+    }
+    const date = new Date(year, month - 1, day, hour, minute, second, millisecond);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return 0;
+    }
+    return date.getTime();
+}
+
+function parseStructuredTimestamp(value) {
+    const text = String(value || '').trim();
+    if (!text) {
+        return 0;
+    }
+
+    const humanized = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})@(\d{1,2})h(\d{1,2})m(\d{1,2})s(?:(\d{1,3})ms)?/);
+    if (humanized) {
+        return buildLocalTimestamp(humanized);
+    }
+
+    const isoLike = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})[T\s_-]+(\d{1,2})[:h-](\d{1,2})(?:[:m-](\d{1,2}))?/);
+    if (isoLike) {
+        return buildLocalTimestamp(isoLike);
+    }
+
+    const dateOnly = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (dateOnly) {
+        return buildLocalTimestamp(dateOnly);
+    }
+
+    return 0;
+}
+
 function parseTimestamp(value) {
     if (value === undefined || value === null || value === '') {
         return 0;
     }
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-        return value;
+        return normalizeTimestampNumber(value);
     }
-    const parsed = Date.parse(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
+    const text = String(value).trim();
+    if (!text) {
+        return 0;
+    }
+    if (/^\d+(?:\.\d+)?$/.test(text)) {
+        return normalizeTimestampNumber(text);
+    }
+    const parsed = Date.parse(text);
+    if (Number.isFinite(parsed)) {
+        return parsed;
+    }
+    return parseStructuredTimestamp(text);
+}
+
+function getMaxTimestamp(...values) {
+    return values.reduce((max, value) => Math.max(max, parseTimestamp(value)), 0);
+}
+
+function getChatInfoTimestamp(chatInfo) {
+    if (!chatInfo || typeof chatInfo !== 'object') {
+        return 0;
+    }
+    return getMaxTimestamp(
+        chatInfo.last_mes,
+        chatInfo.send_date,
+        chatInfo.date_last_chat,
+        chatInfo.updated_at,
+        chatInfo.modified_at,
+        chatInfo.mtimeMs,
+        chatInfo.file_name,
+        chatInfo.file_id,
+    );
+}
+
+function getCharacterDirectLastChatTimestamp(characterInfo) {
+    return getMaxTimestamp(
+        characterInfo?.date_last_chat,
+        characterInfo?.character?.date_last_chat,
+        characterInfo?.character?.data?.date_last_chat,
+        characterInfo?.character?.chat_metadata?.date_last_chat,
+    );
 }
 
 function formatDisplayDate(timestamp) {
@@ -3956,7 +4051,7 @@ async function getCharacterLastChatInfo(characterInfo) {
         return { timestamp: 0, never: true };
     }
 
-    const direct = parseTimestamp(characterInfo.character?.date_last_chat);
+    const direct = getCharacterDirectLastChatTimestamp(characterInfo);
     if (direct) {
         return { timestamp: direct, never: false };
     }
@@ -3967,13 +4062,17 @@ async function getCharacterLastChatInfo(characterInfo) {
     }
 
     const chats = await getPastChatsForCharacter(characterInfo);
-    const maxTime = chats.reduce((max, chatInfo) => Math.max(max, parseTimestamp(chatInfo.last_mes)), 0);
+    const maxTime = chats.reduce((max, chatInfo) => Math.max(max, getChatInfoTimestamp(chatInfo)), 0);
     const result = {
         timestamp: maxTime,
         never: !chats.length || !maxTime,
         checkedAt: Date.now(),
     };
-    state.lastChatTimeCache.set(characterInfo.key, result);
+    if (maxTime) {
+        state.lastChatTimeCache.set(characterInfo.key, result);
+    } else {
+        state.lastChatTimeCache.delete(characterInfo.key);
+    }
     return result;
 }
 

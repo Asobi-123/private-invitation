@@ -108,7 +108,7 @@ The last-chat snapshot is updated from SillyTavern navigation events plus a low-
 
 Birthday / special-date resolution scans eligible pool characters only when no anger-ready character exists. Each candidate checks `characterUserBirthdays`, `characterBirthdays`, and `characterDateEvents`; global `userBirthday` and `customDateEvents` remain defaults, not the only source of date events. Birthday pool lines may start with tags such as `用户生日==`, `角色生日==`, `{todayEvent}==`, or `通用==`; the resolver prefers exact event-tag matches, then generic / untagged fallback lines, and strips the tag before display.
 
-Reunion checks only the character that was already randomly drawn. It uses `character.date_last_chat` first, then falls back to `/api/characters/chats` and the maximum `last_mes` timestamp. This does not increase old characters' draw probability.
+Reunion checks only the character that was already randomly drawn. It reads top-level `date_last_chat` first, then falls back to `/api/characters/chats` and the maximum timestamp found in `last_mes`, related metadata, or the SillyTavern chat file-name date. Failed last-chat lookups are not cached, so a transient API or parsing miss does not keep blocking reunion mode. This does not increase old characters' draw probability.
 
 ### Shared preview classes
 
